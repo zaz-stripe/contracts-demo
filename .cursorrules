@@ -1,0 +1,101 @@
+# LLM Playground Project Context
+
+## Project Overview
+This is a Next.js 15.3.2 application that provides a playground interface for testing Large Language Models via Stripe's internal LLM infrastructure. The project focuses on clean, minimal design with monospace typography and professional UI components.
+
+## Core Functionality
+- **LLM Integration**: Direct HTTP requests to Stripe's internal LLM proxy at `127.0.0.1:7891`
+- **Multi-Model Support**: GPT-4, GPT-3.5, Claude 3.5 Sonnet, Claude 3 Haiku
+- **JSON Mode**: Structured output capabilities
+- **Token Tracking**: Real-time usage monitoring
+- **Clean UI**: Minimal, professional interface using shadcn/ui components
+
+## Tech Stack
+- **Framework**: Next.js 15.3.2 with App Router and Turbopack
+- **Styling**: Tailwind CSS v4 with shadcn/ui components
+- **Typography**: Monospace fonts throughout for technical aesthetic
+- **Authentication**: Stripe's internal `sc-2fa` system
+- **HTTP Client**: Node.js native `http` module (not OpenAI client)
+
+## Architecture
+
+### API Layer (`/src/app/api/llm/route.ts`)
+- Direct HTTP requests to `127.0.0.1:7891`
+- Host header: `llm-openai.corp.stripe.com`
+- Authorization: Bearer token with `use_case=llm-openai-srv-dev&team=dashxp-design`
+- Supports multiple models and JSON mode
+- Returns usage statistics and error handling
+
+### UI Components (`/src/components/`)
+- `LLMPlayground.tsx`: Main interface component
+- Uses shadcn/ui: Button, Card, Textarea, Label, Select, Checkbox, Badge
+- Clean, minimal design with consistent spacing
+- Monospace typography throughout
+
+### Utility Libraries (`/src/lib/`)
+- `llm.ts`: Programmatic LLM functions for developers
+- `utils.ts`: Tailwind utility functions
+- `llm-readme.md`: Documentation for LLM integration
+
+### Example Usage (`/src/examples/`)
+- `llm-usage.ts`: Code examples for different use cases
+
+## Design Principles
+1. **Minimal & Clean**: No gradients, flashy colors, or unnecessary decoration
+2. **Monospace Typography**: Technical, professional aesthetic
+3. **Consistent Spacing**: Uses Tailwind's spacing scale consistently
+4. **Functional Focus**: UI serves the functionality, not decoration
+5. **Professional Appearance**: Matches modern dashboard/tool aesthetics
+
+## Key Files Structure
+```
+src/
+├── app/
+│   ├── api/llm/route.ts           # LLM API endpoint
+│   ├── api/stripe/config/route.ts # Stripe configuration
+│   ├── llm/page.tsx               # LLM playground page
+│   ├── globals.css                # Tailwind v4 configuration
+│   ├── layout.tsx                 # App layout
+│   └── page.tsx                   # Homepage with project info
+├── components/
+│   ├── ui/                        # shadcn/ui components
+│   └── LLMPlayground.tsx          # Main playground component
+├── lib/
+│   ├── llm.ts                     # LLM utility functions
+│   ├── utils.ts                   # General utilities
+│   └── llm-readme.md              # LLM documentation
+└── examples/
+    └── llm-usage.ts               # Usage examples
+```
+
+## Styling Guidelines
+- Use `font-mono` class for all text elements
+- Prefer shadcn/ui components over custom styling
+- Use semantic color classes (`text-muted-foreground`, `bg-muted`)
+- Consistent spacing with Tailwind's scale (gap-6, space-y-4)
+- Clean card-based layouts
+
+## Development Workflow
+1. **Authentication**: Run `sc-2fa` for Stripe network access
+2. **Development**: `npm run dev` starts Turbopack dev server
+3. **Testing**: Use `/llm` route to test the playground interface
+4. **API Testing**: Direct calls to `/api/llm` endpoint
+
+## Important Notes
+- **Network Dependency**: Requires Stripe's corporate network and `sc-2fa`
+- **Tailwind v4**: Uses new Tailwind configuration (no tailwind.config.js)
+- **No OpenAI Client**: Uses direct HTTP requests for better control
+- **Monospace Focus**: All fonts should be monospace for consistency
+
+## Common Patterns
+- Form handling with React state
+- Error boundaries with proper error display
+- Loading states with disabled buttons and spinners
+- Token usage display with badges
+- Responsive design with grid layouts
+
+## Future Considerations
+- Keep the minimal aesthetic
+- Add features that enhance functionality, not decoration
+- Maintain monospace typography consistency
+- Focus on developer/technical user experience 

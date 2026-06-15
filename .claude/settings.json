@@ -1,0 +1,5 @@
+{
+  "env": {
+    "CLAUDE_CODE_DANGEROUSLY_ALLOWED_MCP_SERVERS": "figma,figma-desktop"
+  }
+}

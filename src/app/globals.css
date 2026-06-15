@@ -1,0 +1,212 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 240 5.9% 10%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 240 4.8% 95.9%;
+  --secondary-foreground: 240 5.9% 10%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 240 4.8% 95.9%;
+  --accent-foreground: 240 5.9% 10%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 240 5.9% 10%;
+  --radius: 0.5rem;
+}
+
+.dark {
+  --background: 240 10% 3.9%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 3.9%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 3.9%;
+  --popover-foreground: 0 0% 98%;
+  --primary: 0 0% 98%;
+  --primary-foreground: 240 5.9% 10%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 3.7% 15.9%;
+  --muted-foreground: 240 5% 64.9%;
+  --accent: 240 3.7% 15.9%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --ring: 240 4.9% 83.9%;
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+}
+
+/* Custom base styles */
+@layer base {
+  html {
+    font-size: 0.875rem; /* 14px base */
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+  
+  .font-mono {
+    font-family: ui-monospace, 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  }
+
+  button,
+  [role="button"],
+  a {
+    cursor: pointer;
+  }
+}
+
+@layer utilities {
+  .highlight-ring {
+    box-shadow: 0 0 0 1.5px #088EF9;
+  }
+
+  @keyframes highlight-ring-fade {
+    0% {
+      box-shadow: 0 0 0 1.5px #088EF9;
+    }
+    70% {
+      box-shadow: 0 0 0 1.5px #088EF9;
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(8, 142, 249, 0);
+    }
+  }
+
+  .highlight-ring-fade {
+    animation: highlight-ring-fade 1s forwards;
+  }
+
+  .highlight-blur {
+    filter: blur(2px);
+  }
+
+  @keyframes highlight-blur-fade {
+    0% {
+      filter: blur(2px);
+    }
+    100% {
+      filter: blur(0);
+    }
+  }
+
+  .highlight-blur-fade {
+    animation: highlight-blur-fade 1s forwards;
+  }
+
+  .table-row-hover {
+    position: relative;
+  }
+
+  .table-row-hover > * {
+    position: relative;
+    z-index: 1;
+  }
+
+  .table-row-hover::before {
+    content: "";
+    position: absolute;
+    inset: 1px 0;
+    margin: 0 -16px;
+    border-radius: 6px;
+    background-color: transparent;
+    pointer-events: none;
+    transition: background-color 150ms ease-out;
+  }
+
+  .table-row-hover:hover::before {
+    background-color: #F5F6F8;
+  }
+
+  @keyframes assistant-working-pulse {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(0.9);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.18);
+    }
+  }
+
+  .assistant-working-dot {
+    animation: assistant-working-pulse 900ms ease-in-out infinite;
+    transform-origin: center;
+    will-change: transform, opacity;
+  }
+
+  @keyframes subtle-pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 0.6;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  @keyframes fadeOut {
+    0% { opacity: 0.7; }
+    100% { opacity: 0; }
+  }
+}

@@ -1,0 +1,338 @@
+import type { PricingPlanRow } from '@/components/product-catalog/productCatalogPage.types'
+import type { CoachmarkStep } from '@/components/product-catalog/Coachmark'
+
+export const EXAMPLE_PLAN_ID = -999
+
+export const EXAMPLE_PRICING_PLAN: PricingPlanRow = {
+  id: EXAMPLE_PLAN_ID,
+  name: "Example plan",
+  description: "Example plan with tiered pricing and credit grants",
+  billingPeriod: "Monthly",
+  amount: "$99.99 + usage",
+  currency: "USD",
+  status: "draft",
+  draft: {
+    planName: "Pro",
+    planDescription: "Enterprise plan with all features",
+    planCurrency: "USD",
+    planLookupKey: "pro-example",
+    planTaxTreatment: "Included in prices",
+
+    planRateCards: [
+      {
+        id: 1,
+        name: "AI Models",
+        rates: [
+          { id: 1, name: "GPT-4 Calls" },
+          { id: 2, name: "Claude Calls" },
+        ],
+      },
+    ],
+    planRates: [],
+    activePlanRateCardId: 1,
+    planRateUsage: { 1: "1000", 2: "500" },
+    planRateUnitPrices: { 1: "0.03", 2: "0.02" },
+    planRateTiers: { 1: [1, 2], 2: [] },
+    planRateTierToValues: {
+      1: { 1: "1000", 2: "10000" },
+    },
+    planRateTierUnitPrices: {
+      1: { 1: "0.03", 2: "0.02" },
+    },
+    planRateTierFlatFees: {},
+    planRateIncludeTax: {},
+    planRateCurrencies: {},
+    planRateActiveCurrencyId: {},
+    planUsageScenarioRates: [1, 2],
+
+    planCreditGrants: [
+      { id: 1, name: "Monthly Credits" },
+    ],
+    planSubscriptionFees: [
+      { id: 1, name: "Enterprise Fee" },
+    ],
+    planExpandedRateCards: { 1: true },
+
+    showRateCardAdvanced: false,
+    showRateAdvanced: false,
+    showCreditAdvanced: false,
+    showSubscriptionFeeAdvanced: false,
+
+    rateCardLookupKeys: { 1: "ai-models" },
+    rateCardServicingPeriods: { 1: "Monthly" },
+    rateCardMetadataRows: {},
+    rateCardMetadataValues: {},
+
+    rateMeters: { 1: "gpt4_calls", 2: "claude_calls" },
+    availablePlanMeterOptions: ["gpt4_calls", "claude_calls"],
+    planRateMeterConfigs: {
+      1: {
+        name: "gpt4_calls",
+        eventName: "ai.gpt4.call",
+        aggregationMethod: "Sum",
+        eventTimeWindow: "Billing period",
+        showCountingOptions: false,
+        valueKeyOverride: "",
+      },
+      2: {
+        name: "claude_calls",
+        eventName: "ai.claude.call",
+        aggregationMethod: "Sum",
+        eventTimeWindow: "Billing period",
+        showCountingOptions: false,
+        valueKeyOverride: "",
+      },
+    },
+
+    ratePriceTypes: { 1: "Graduated", 2: "Usage" },
+    rateSellAs: { 1: "Per unit", 2: "Per unit" },
+    rateUnitLabels: { 1: "call", 2: "call" },
+    rateTaxCodes: {},
+    rateItemLookupKeys: { 1: "gpt4-calls", 2: "claude-calls" },
+    rateItemMetadataRows: {},
+    rateItemMetadataValues: {},
+    rateSettingsMetadataRows: {},
+    rateSettingsMetadataValues: {},
+
+    creditGrantAmounts: { 1: "50.00" },
+    creditGrantPeriods: { 1: "Monthly" },
+    creditGrantApplications: { 1: "All rates" },
+    creditGrantLookupKeys: { 1: "monthly-credits" },
+
+    subscriptionFeeAmounts: { 1: "99.99" },
+    subscriptionFeePeriods: { 1: "Monthly" },
+    subscriptionFeePriceTypes: { 1: "Flat" },
+    subscriptionFeeSellAs: { 1: "Per subscription" },
+    subscriptionFeeUnitLabels: {},
+    subscriptionFeeTaxCodes: {},
+    subscriptionFeeItemLookupKeys: { 1: "pro-fee" },
+    subscriptionFeeFeeLookupKeys: {},
+    subscriptionFeeItemMetadataRows: {},
+    subscriptionFeeFeeMetadataRows: {},
+    subscriptionFeeItemMetadataValues: {},
+    subscriptionFeeFeeMetadataValues: {},
+  },
+}
+
+// Intro coachmark steps shown on first launch (3 steps: helper bar, map, preview)
+export const INTRO_COACHMARK_STEPS: CoachmarkStep[] = [
+  {
+    id: "field-description-bar",
+    title: "Field helper",
+    description: "Hover over any field to see a helpful description here. This bar provides context about what each option does.",
+    targetSelector: "[data-coachmark='field-description-bar']",
+    position: "bottom",
+    offsetLeft: -200,
+  },
+  {
+    id: "object-map",
+    title: "Object map",
+    description: "Visualize your pricing plan as an interactive graph. Click on objects to edit them, or drag to pan around.",
+    targetSelector: "[data-coachmark='object-map']",
+    position: "left",
+    align: "center",
+  },
+  {
+    id: "preview-panel",
+    title: "Billing preview",
+    description: "See a live preview of what customers will pay. Use the sliders to model different usage scenarios.",
+    targetSelector: "[data-coachmark='preview-panel']",
+    position: "left",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+]
+
+// Coachmark steps for Layout A (with Map/Preview/Code tabs)
+export const COACHMARK_STEPS_LAYOUT_A: CoachmarkStep[] = [
+  {
+    id: "pricing-plan",
+    title: "Pricing plan",
+    description: "A subscription package that bundles prices, credits, and fees together for billing.",
+    targetSelector: "[data-coachmark='pricing-plan']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "rate-card",
+    title: "Price group",
+    description: "Groups related prices that share the same billing period and currency.",
+    targetSelector: "[data-coachmark='rate-card']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "rate",
+    title: "Price",
+    description: "Sets the price for usage, with optional tiers for volume discounts.",
+    targetSelector: "[data-coachmark='rate']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "meter",
+    title: "Meter",
+    description: "Tracks usage events from your application. Each price connects to a meter that counts what customers consume.",
+    targetSelector: "[data-coachmark='meter']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "credit-grant",
+    title: "Credit grant",
+    description: "Free credits applied to reduce what customers pay.",
+    targetSelector: "[data-coachmark='credit-grant']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "subscription-fee",
+    title: "Subscription fee",
+    description: "A fixed recurring charge, separate from usage.",
+    targetSelector: "[data-coachmark='subscription-fee']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "sidebar-menu",
+    title: "Navigation menu",
+    description: "Browse and select different parts of your pricing plan from this sidebar.",
+    targetSelector: "[data-coachmark='sidebar']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "map-tab",
+    title: "Object map",
+    description: "Visualize your pricing plan as an interactive graph. Create and edit components directly from this view.",
+    targetSelector: "[data-coachmark='map-tab']",
+    position: "bottom",
+  },
+  {
+    id: "preview-tab",
+    title: "Preview",
+    description: "Model how much customers will pay based on their usage. Adjust sliders to see costs change in real-time.",
+    targetSelector: "[data-coachmark='preview-tab']",
+    position: "bottom",
+    offsetLeft: 60,
+  },
+  {
+    id: "code-tab",
+    title: "Code view",
+    description: "A live, auto-updating view of the Stripe API objects being created behind the scenes.",
+    targetSelector: "[data-coachmark='code-tab']",
+    position: "bottom",
+    offsetLeft: 115,
+  },
+]
+
+// Coachmark steps for Layout B (with side preview panel - 7 steps)
+export const COACHMARK_STEPS_LAYOUT_B: CoachmarkStep[] = [
+  {
+    id: "pricing-plan",
+    title: "Pricing plan",
+    description: "A subscription package that bundles prices, credits, and fees together for billing.",
+    targetSelector: "[data-coachmark='pricing-plan']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "rate-card",
+    title: "Price group",
+    description: "Groups related prices that share the same billing period and currency.",
+    targetSelector: "[data-coachmark='rate-card']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "rate",
+    title: "Price",
+    description: "Sets the price for usage, with optional tiers for volume discounts.",
+    targetSelector: "[data-coachmark='rate']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "meter",
+    title: "Meter",
+    description: "Tracks usage events from your application. Each price connects to a meter that counts what customers consume.",
+    targetSelector: "[data-coachmark='meter']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "credit-grant",
+    title: "Credit grant",
+    description: "Free credits applied to reduce what customers pay.",
+    targetSelector: "[data-coachmark='credit-grant']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "subscription-fee",
+    title: "Subscription fee",
+    description: "A fixed recurring charge, separate from usage.",
+    targetSelector: "[data-coachmark='subscription-fee']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "sidebar-menu",
+    title: "Navigation menu",
+    description: "Browse and select different parts of your pricing plan from this sidebar.",
+    targetSelector: "[data-coachmark='sidebar']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+  {
+    id: "preview-panel",
+    title: "Billing preview",
+    description: "See a live preview of what customers will pay. Use the sliders to model different usage scenarios and watch the totals update in real-time.",
+    targetSelector: "[data-coachmark='preview-panel']",
+    position: "right",
+    align: "top",
+    offsetLeft: 12,
+    offsetTop: -8,
+  },
+]
+
+/** Maps node-type keys to coachmark steps for dynamic (on-first-click) coachmarks in the create flow. */
+export const DYNAMIC_COACHMARK_MAP: Record<string, CoachmarkStep> = {
+  'pricing-plan': COACHMARK_STEPS_LAYOUT_A[0]!,
+  'rate-card': COACHMARK_STEPS_LAYOUT_A[1]!,
+  'rate': COACHMARK_STEPS_LAYOUT_A[2]!,
+  'meter': COACHMARK_STEPS_LAYOUT_A[3]!,
+  'subscription-fee': COACHMARK_STEPS_LAYOUT_A[5]!,
+}
+
+// Default export for backwards compatibility (Layout A)
+export const COACHMARK_STEPS = COACHMARK_STEPS_LAYOUT_A
