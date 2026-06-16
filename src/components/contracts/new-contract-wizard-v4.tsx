@@ -5604,9 +5604,15 @@ function EditorAssistant({
 // CONTRACT CONSOLE — full-column agentic experience
 // =============================================================================
 type ConsoleMessage =
-  | { role: "user"; text: string }
+  | { role: "user"; text: string; attachmentName?: string }
   | { role: "assistant"; text: string }
   | { role: "action"; text: string }
+
+interface PendingAttachment {
+  filename: string
+  base64: string
+  mediaType: string
+}
 
 const STARTERS = [
   "Add Enterprise Seats and set it to $180/mo",
@@ -5631,8 +5637,10 @@ function ContractConsole({
   const [messages, setMessages] = useState<ConsoleMessage[]>([])
   const [input, setInput] = useState("")
   const [thinking, setThinking] = useState(false)
+  const [pendingAttachment, setPendingAttachment] = useState<PendingAttachment | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
@@ -5640,11 +5648,32 @@ function ContractConsole({
 
   useEffect(() => { inputRef.current?.focus() }, [])
 
+  function handleFileSelect(file: File) {
+    const mediaType = file.type || "text/plain"
+    const reader = new FileReader()
+    if (mediaType === "application/pdf") {
+      reader.onload = () => {
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(reader.result as ArrayBuffer)))
+        setPendingAttachment({ filename: file.name, base64, mediaType })
+      }
+      reader.readAsArrayBuffer(file)
+    } else {
+      reader.onload = () => {
+        const base64 = btoa(unescape(encodeURIComponent(reader.result as string)))
+        setPendingAttachment({ filename: file.name, base64, mediaType: "text/plain" })
+      }
+      reader.readAsText(file)
+    }
+  }
+
   async function send(text?: string) {
     const raw = (text ?? input).trim()
-    if (!raw || thinking) return
+    const attachment = pendingAttachment
+    if (!raw && !attachment || thinking) return
     setInput("")
-    setMessages(prev => [...prev, { role: "user", text: raw }])
+    setPendingAttachment(null)
+    const displayText = raw || `Analyze this document`
+    setMessages(prev => [...prev, { role: "user", text: displayText, attachmentName: attachment?.filename }])
     setThinking(true)
     try {
       const ctx = {
@@ -5666,7 +5695,7 @@ function ContractConsole({
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: raw, context: ctx }),
+        body: JSON.stringify({ message: raw || "Analyze this document and populate the contract.", context: ctx, attachment }),
       })
       const data = (await res.json()) as { reply: string; commands: string[] }
       if (data.reply) {
@@ -5707,8 +5736,8 @@ function ContractConsole({
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3">
         {isEmpty && (
           <div className="flex flex-col gap-6 mt-2">
-            <p className="text-[13px] text-[#333] leading-relaxed">
-              Describe the contract you want to create, or start with a suggestion:
+            <p className="text-[13px] text-[#555] leading-relaxed">
+              Describe the contract you need, upload an existing contract or pricing sheet, or start with a suggestion:
             </p>
             <div className="flex flex-col gap-2">
               {STARTERS.map(s => (
@@ -5720,6 +5749,13 @@ function ContractConsole({
                   <span className="text-[#533AFD] mr-1.5 font-mono">$</span>{s}
                 </button>
               ))}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="text-left text-[12px] text-[#555] hover:text-[#999] py-1.5 px-3 rounded-lg border border-[#1a1a1a] hover:border-[#2a2a2a] transition-all flex items-center gap-2"
+              >
+                <Paperclip className="w-3 h-3 text-[#533AFD] shrink-0" />
+                Upload a contract or pricing sheet
+              </button>
             </div>
           </div>
         )}
@@ -5739,7 +5775,14 @@ function ContractConsole({
               <span className={cn("shrink-0 font-mono pt-px", m.role === "user" ? "text-[#533AFD]" : "text-[#383838]")}>
                 {m.role === "user" ? "$" : "→"}
               </span>
-              <span className={m.role === "user" ? "text-[#d0d0d0]" : "text-[#808080]"}>{m.text}</span>
+              <span className={m.role === "user" ? "text-[#d0d0d0]" : "text-[#808080]"}>
+                {m.role === "user" && m.attachmentName && (
+                  <span className="inline-flex items-center gap-1 mr-2 px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[11px] text-[#666]">
+                    <Paperclip className="w-2.5 h-2.5" />{m.attachmentName}
+                  </span>
+                )}
+                {m.text}
+              </span>
             </div>
           )
         })}
@@ -5756,10 +5799,32 @@ function ContractConsole({
         )}
       </div>
 
+      {/* Pending attachment pill */}
+      {pendingAttachment && (
+        <div className="px-5 pt-2 shrink-0">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] text-[11px] text-[#888]">
+            <Paperclip className="w-3 h-3 text-[#533AFD]" />
+            <span className="max-w-[180px] truncate">{pendingAttachment.filename}</span>
+            <button
+              onClick={() => setPendingAttachment(null)}
+              className="ml-1 text-[#444] hover:text-[#888] transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="px-5 py-4 border-t border-[#181818] shrink-0">
         <div className="flex items-center gap-2.5 bg-[#111] rounded-lg px-3.5 py-2.5 border border-[#1e1e1e] focus-within:border-[#2e2e2e] transition-colors">
-          <span className="text-[#533AFD] text-[13px] font-mono shrink-0">$</span>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-[#333] hover:text-[#555] transition-colors shrink-0"
+            title="Upload document"
+          >
+            <Paperclip className="w-3.5 h-3.5" />
+          </button>
           <input
             ref={inputRef}
             value={input}
@@ -5769,7 +5834,7 @@ function ContractConsole({
             disabled={thinking}
             className="bg-transparent text-[#d0d0d0] text-[13px] flex-1 outline-none placeholder:text-[#282828] disabled:opacity-40"
           />
-          {input.trim() && (
+          {(input.trim() || pendingAttachment) && (
             <button
               onClick={() => void send()}
               disabled={thinking}
@@ -5780,6 +5845,19 @@ function ContractConsole({
           )}
         </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".pdf,.txt,.csv,.md"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) handleFileSelect(file)
+          e.target.value = ""
+        }}
+      />
     </div>
   )
 }
@@ -6306,10 +6384,20 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     />
   ) : null
 
-  // "Inline" mode: tree+form in top half, console in bottom half of the same column
+  // "Inline" mode: tree+form in top half, console in bottom half of the same column.
+  // When contract is empty, console fills the full height; once content is added it
+  // transitions to 50/50 so the editor reveals itself.
+  const hasContractContent = selectedPlans.length > 0 || customer !== null
+
   const inlineLeftColumn = (
     <div className="relative flex flex-col w-[580px] shrink-0 border-r border-[#ebeef1] overflow-hidden">
-      <div className="flex overflow-hidden min-h-0" style={{ height: "50%" }}>
+      <div
+        className="flex overflow-hidden min-h-0"
+        style={{
+          height: hasContractContent ? "50%" : "0%",
+          transition: "height 0.4s cubic-bezier(0.4,0,0.2,1)",
+        }}
+      >
         <TreeSidebar
           contractId={contractId}
           customer={customer}
@@ -6391,7 +6479,14 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           onSelectNode={handleSelectNode}
         />
       </div>
-      <div className="flex border-t border-[#1c1c1c] overflow-hidden" style={{ height: "50%" }}>
+      <div
+        className="flex overflow-hidden"
+        style={{
+          height: hasContractContent ? "50%" : "100%",
+          borderTop: hasContractContent ? "1px solid #1c1c1c" : "none",
+          transition: "height 0.4s cubic-bezier(0.4,0,0.2,1)",
+        }}
+      >
         {consoleColumnEl}
       </div>
     </div>

@@ -10,6 +10,12 @@ interface AssistantContext {
   today: string
 }
 
+interface Attachment {
+  filename: string
+  base64: string
+  mediaType: string
+}
+
 // ─── Keyword fallback (no API key) ──────────────────────────────────────────
 
 function demoReply(message: string, ctx: AssistantContext): { reply: string; commands: string[] } {
@@ -99,26 +105,53 @@ Guidelines:
 - If the user asks you to make a change, do it immediately — don't ask for confirmation.
 - If a product isn't on the contract yet, add it first, then make other changes.
 - Only include a COMMANDS: section when you're actually making changes.
-- Never make up product names — only use what's in the available list.`
+- Never make up product names — only use what's in the available list.
+- When a document is provided, extract all relevant contract details (customer, products, pricing, dates, discounts) and apply them using COMMANDS. Match extracted product names to the closest available product in the catalog. Be thorough — apply as many commands as needed to fully populate the contract.`
 }
 
-async function callClaude(message: string, ctx: AssistantContext): Promise<{ reply: string; commands: string[] }> {
+type AnthropicContent =
+  | { type: "text"; text: string }
+  | { type: "document"; source: { type: "base64"; media_type: string; data: string } }
+
+async function callClaude(
+  message: string,
+  ctx: AssistantContext,
+  attachment?: Attachment,
+): Promise<{ reply: string; commands: string[] }> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return demoReply(message, ctx)
 
   try {
+    const userContent: AnthropicContent[] = []
+
+    if (attachment) {
+      if (attachment.mediaType === "application/pdf") {
+        userContent.push({
+          type: "document",
+          source: { type: "base64", media_type: "application/pdf", data: attachment.base64 },
+        })
+      } else {
+        // Plain text / CSV — decode and inline
+        const decoded = Buffer.from(attachment.base64, "base64").toString("utf-8")
+        userContent.push({ type: "text", text: `Document (${attachment.filename}):\n\n${decoded}` })
+      }
+    }
+
+    userContent.push({ type: "text", text: message })
+
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-api-key": apiKey,
         "anthropic-version": "2023-06-01",
+        ...(attachment?.mediaType === "application/pdf" ? { "anthropic-beta": "pdfs-2024-09-25" } : {}),
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: 400,
+        max_tokens: attachment ? 1000 : 400,
         system: buildSystemPrompt(ctx),
-        messages: [{ role: "user", content: message }],
+        messages: [{ role: "user", content: userContent }],
       }),
     })
 
@@ -143,13 +176,18 @@ async function callClaude(message: string, ctx: AssistantContext): Promise<{ rep
 
 export async function POST(req: Request) {
   try {
-    const { message, context } = (await req.json()) as { message: string; context: AssistantContext }
+    const { message, context, attachment } = (await req.json()) as {
+      message: string
+      context: AssistantContext
+      attachment?: Attachment
+    }
     if (!message || typeof message !== "string") {
       return Response.json({ reply: "What would you like to change?", commands: [] })
     }
     const result = await callClaude(
       message,
-      context ?? { plans: [], catalog: [], selectedPlanName: null, customer: null, currency: "USD", draftExpiry: "", today: new Date().toISOString().slice(0, 10) }
+      context ?? { plans: [], catalog: [], selectedPlanName: null, customer: null, currency: "USD", draftExpiry: "", today: new Date().toISOString().slice(0, 10) },
+      attachment,
     )
     return Response.json(result)
   } catch {
