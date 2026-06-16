@@ -406,14 +406,12 @@ function TreeSidebar({
       expanded: true,
     })
     
-    // Customer
-    if (customer) {
-      nodes.push({
-        id: "customer",
-        type: "customer",
-        label: customer.name,
-      })
-    }
+    // Customer — always shown so it's always accessible in the tree
+    nodes.push({
+      id: "customer",
+      type: "customer",
+      label: customer?.name || "Customer",
+    })
     
     // Plans
     selectedPlans.forEach((entry, planIdx) => {
@@ -5688,10 +5686,14 @@ function ContractConsole({
         draftExpiry,
         today: new Date().toISOString().slice(0, 10),
       }
+      // Pass conversation history (user + assistant turns only) for multi-turn context
+      const history = messages
+        .filter(m => m.role === "user" || m.role === "assistant")
+        .map(m => ({ role: m.role as "user" | "assistant", content: m.text }))
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: raw || "Analyze this document and populate the contract.", context: ctx, attachment }),
+        body: JSON.stringify({ message: raw || "Analyze this document and populate the contract.", context: ctx, attachment, history }),
       })
       const data = (await res.json()) as { reply: string; commands: string[] }
       if (data.reply) {

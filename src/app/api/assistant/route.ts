@@ -16,6 +16,11 @@ interface Attachment {
   mediaType: string
 }
 
+interface HistoryMessage {
+  role: "user" | "assistant"
+  content: string
+}
+
 // ─── Keyword fallback (no API key) ──────────────────────────────────────────
 
 function demoReply(message: string, ctx: AssistantContext): { reply: string; commands: string[] } {
@@ -77,21 +82,23 @@ function demoReply(message: string, ctx: AssistantContext): { reply: string; com
 
 function buildSystemPrompt(ctx: AssistantContext): string {
   const planLines = ctx.plans.length
-    ? ctx.plans.map(p => `  • ${p.name}: $${p.price}/mo × ${p.quantity} units (${p.startDate} – ${p.endDate})${p.discounts.length ? `, ${p.discounts.join("/")}% discount` : ""}`).join("\n")
+    ? ctx.plans.map(p =>
+        `  • ${p.name}: $${p.price}/mo × ${p.quantity} units (${p.startDate}–${p.endDate})${p.discounts.length ? `, ${p.discounts.join("/")}% discount` : ""}`
+      ).join("\n")
     : "  (none yet)"
 
-  return `You are a contract configuration assistant embedded in a SaaS billing tool. You help users configure enterprise contracts conversationally.
+  return `You are a helpful contract assistant embedded in a SaaS billing tool. Have a natural, thoughtful conversation with the user. You can answer questions, explain options, do math, summarize the deal — anything that's useful. When the user asks you to make a change, do it.
 
 Current contract state:
 - Customer: ${ctx.customer?.name ? `${ctx.customer.name} <${ctx.customer.email}>` : "not set"}
 - Currency: ${ctx.currency}
-- Draft expiry: ${ctx.draftExpiry}
+- Draft expiry: ${ctx.draftExpiry || "not set"}
 - Products on contract:
 ${planLines}
 - Products available to add: ${ctx.catalog.join(", ")}
 - Today: ${ctx.today}
 
-You can take actions on this contract. After your reply, list any actions to apply under a COMMANDS: section using one of these exact formats:
+When you need to make changes to the contract, append a COMMANDS: section after your reply using these exact formats (one per line, no bullets needed):
   add [product name]
   remove [product name]
   set customer to [name]
@@ -100,13 +107,12 @@ You can take actions on this contract. After your reply, list any actions to app
   set [product name] to $[price]
   add a [N]% discount to [product name]
 
-Guidelines:
-- Be concise. One or two sentences max unless the user asks for explanation.
-- If the user asks you to make a change, do it immediately — don't ask for confirmation.
-- If a product isn't on the contract yet, add it first, then make other changes.
-- Only include a COMMANDS: section when you're actually making changes.
-- Never make up product names — only use what's in the available list.
-- When a document is provided, extract all relevant contract details (customer, products, pricing, dates, discounts) and apply them using COMMANDS. Match extracted product names to the closest available product in the catalog. Be thorough — apply as many commands as needed to fully populate the contract.`
+Rules:
+- Only include COMMANDS: when you're actually making changes — not for questions or explanations.
+- Never invent product names. Only use what's in the available list above.
+- If a product needs to be added before it can be modified, add it first.
+- When a document is provided, extract all contract-relevant details (customer, products, pricing, dates, discounts) and apply them as commands. Match product names to the closest available option.
+- Be yourself. Respond conversationally, not like a command-line interface.`
 }
 
 type AnthropicContent =
@@ -117,11 +123,13 @@ async function callClaude(
   message: string,
   ctx: AssistantContext,
   attachment?: Attachment,
+  history?: HistoryMessage[],
 ): Promise<{ reply: string; commands: string[] }> {
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) return demoReply(message, ctx)
 
   try {
+    // Build the current user message content
     const userContent: AnthropicContent[] = []
 
     if (attachment) {
@@ -131,13 +139,18 @@ async function callClaude(
           source: { type: "base64", media_type: "application/pdf", data: attachment.base64 },
         })
       } else {
-        // Plain text / CSV — decode and inline
         const decoded = Buffer.from(attachment.base64, "base64").toString("utf-8")
         userContent.push({ type: "text", text: `Document (${attachment.filename}):\n\n${decoded}` })
       }
     }
-
     userContent.push({ type: "text", text: message })
+
+    // Build multi-turn message array from history + current turn
+    const messages: { role: "user" | "assistant"; content: string | AnthropicContent[] }[] = []
+    for (const h of history ?? []) {
+      messages.push({ role: h.role, content: h.content })
+    }
+    messages.push({ role: "user", content: userContent })
 
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -149,9 +162,9 @@ async function callClaude(
       },
       body: JSON.stringify({
         model: "claude-haiku-4-5-20251001",
-        max_tokens: attachment ? 1000 : 400,
+        max_tokens: attachment ? 1200 : 600,
         system: buildSystemPrompt(ctx),
-        messages: [{ role: "user", content: userContent }],
+        messages,
       }),
     })
 
@@ -176,21 +189,23 @@ async function callClaude(
 
 export async function POST(req: Request) {
   try {
-    const { message, context, attachment } = (await req.json()) as {
+    const { message, context, attachment, history } = (await req.json()) as {
       message: string
       context: AssistantContext
       attachment?: Attachment
+      history?: HistoryMessage[]
     }
     if (!message || typeof message !== "string") {
-      return Response.json({ reply: "What would you like to change?", commands: [] })
+      return Response.json({ reply: "What would you like to do?", commands: [] })
     }
     const result = await callClaude(
       message,
       context ?? { plans: [], catalog: [], selectedPlanName: null, customer: null, currency: "USD", draftExpiry: "", today: new Date().toISOString().slice(0, 10) },
       attachment,
+      history,
     )
     return Response.json(result)
   } catch {
-    return Response.json({ reply: "I couldn't process that. Try a command like 'add Enterprise Seats'.", commands: [] })
+    return Response.json({ reply: "Something went wrong. Try again.", commands: [] })
   }
 }
