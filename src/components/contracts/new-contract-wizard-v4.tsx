@@ -5787,7 +5787,7 @@ function ContractConsole({
 // =============================================================================
 // CONTROL PANEL — Cmd+/ floating options panel
 // =============================================================================
-type ConsolePosition = "off" | "right" | "left" | "l+hdr" | "over"
+type ConsolePosition = "off" | "right" | "left" | "l+hdr" | "over" | "inline"
 
 function SegmentedRow({
   label,
@@ -5842,17 +5842,6 @@ function ControlPanel({
   consolePosition: ConsolePosition
   setConsolePosition: (p: ConsolePosition) => void
 }) {
-  const [language, setLanguage] = useState("english")
-  const [components, setComponents] = useState("show")
-  const [nav, setNav] = useState("sidebar")
-  const [customerForm, setCustomerForm] = useState("stacked")
-  const [sectionDividers, setSectionDividers] = useState("show")
-  const [navWidth, setNavWidth] = useState("hug")
-  const [formWidth, setFormWidth] = useState("default")
-  const [transitions, setTransitions] = useState("portal")
-  const [meters, setMeters] = useState("calc")
-  const [prices, setPrices] = useState("summary")
-
   return (
     <div className="fixed bottom-4 right-4 z-[200] w-[272px] bg-white rounded-[14px] border border-[#ebeef1] shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
       {/* Header */}
@@ -5866,66 +5855,16 @@ function ControlPanel({
         </button>
       </div>
 
-      {/* Scrollable body */}
-      <div className="overflow-y-auto max-h-[calc(100vh-8rem)] px-4 py-3 flex flex-col gap-3.5">
-        <SegmentedRow label="Language" options={["English", "Deutsch"]} value={language} onChange={setLanguage} />
-        <SegmentedRow label="Components" options={["Hide", "Show"]} value={components} onChange={setComponents} />
-
-        {/* Navigation — 5 options, smaller text */}
-        <div className="flex flex-col gap-1.5">
-          <span className="text-[10px] font-medium text-[#9aa0ac] uppercase tracking-wide">Navigation</span>
-          <div className="flex bg-[#f0f1f3] rounded-[7px] p-[3px] gap-[2px]">
-            {["Sidebar", "Stacked", "Tabs", "Breadcrumbs", "Modal"].map(opt => (
-              <button
-                key={opt}
-                onClick={() => setNav(opt.toLowerCase())}
-                className={cn(
-                  "flex-1 text-[10px] font-medium rounded-[5px] py-1 transition-all",
-                  nav === opt.toLowerCase()
-                    ? "bg-white text-[#353A44] shadow-[0_1px_2px_rgba(0,0,0,0.12)]"
-                    : "text-[#6c7688] hover:text-[#353A44]",
-                )}
-              >
-                {opt}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <SegmentedRow label="Customer form" options={["Stacked", "Tree"]} value={customerForm} onChange={setCustomerForm} />
-        <SegmentedRow label="Section dividers" options={["Show", "Hide"]} value={sectionDividers} onChange={setSectionDividers} />
-        <SegmentedRow label="Nav width" options={["Hug", "Fixed"]} value={navWidth} onChange={setNavWidth} />
-        <SegmentedRow label="Form width" options={["Default", "Narrow"]} value={formWidth} onChange={setFormWidth} />
-
-        {/* Tools — greyed out intentionally (not implemented) */}
-        <div className="flex flex-col gap-1.5 opacity-40 pointer-events-none">
-          <span className="text-[10px] font-medium text-[#9aa0ac] uppercase tracking-wide">Tools</span>
-          <div className="flex bg-[#f0f1f3] rounded-[7px] p-[3px] gap-[2px]">
-            {["Annotation", "Tray", "Popover"].map(opt => (
-              <button key={opt} className="flex-1 text-[11px] font-medium rounded-[5px] py-1 text-[#6c7688]">{opt}</button>
-            ))}
-          </div>
-        </div>
-
-        <SegmentedRow label="Transitions" options={["Portal", "Push", "Tabs"]} value={transitions} onChange={setTransitions} />
-
-        {/* Console slide — functional */}
+      <div className="px-4 py-3 flex flex-col gap-3.5">
         <SegmentedRow
           label="Console slide"
-          options={["Right", "Left", "L+Hdr", "Over"]}
+          options={["Right", "Left", "L+Hdr", "Over", "Inline"]}
           value={consolePosition === "off" ? "" : consolePosition}
           onChange={v => setConsolePosition(v as ConsolePosition)}
           highlight
         />
 
-        <SegmentedRow label="Meters" options={["Calc", "Invoice", "Story", "Payload"]} value={meters} onChange={setMeters} />
-        <SegmentedRow label="Prices" options={["Summary", "Invoice", "Receipt"]} value={prices} onChange={setPrices} />
-
-        {/* Object graph + Reset */}
-        <div className="flex gap-2 pt-0.5 pb-1">
-          <button className="flex-1 py-1.5 rounded-[7px] border border-[#ebeef1] text-[11px] font-medium text-[#353A44] hover:bg-[#f5f6f8] transition-colors">
-            Object graph
-          </button>
+        <div className="flex justify-end pb-1">
           <button
             onClick={() => setConsolePosition("off")}
             className="px-3 py-1.5 rounded-[7px] bg-[#f0f1f3] text-[11px] font-medium text-[#6c7688] hover:bg-[#e8e9ec] transition-colors"
@@ -6367,6 +6306,97 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     />
   ) : null
 
+  // "Inline" mode: tree+form in top half, console in bottom half of the same column
+  const inlineLeftColumn = (
+    <div className="relative flex flex-col w-[580px] shrink-0 border-r border-[#ebeef1] overflow-hidden">
+      <div className="flex overflow-hidden min-h-0" style={{ height: "50%" }}>
+        <TreeSidebar
+          contractId={contractId}
+          customer={customer}
+          selectedPlans={selectedPlans}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={handleSelectNode}
+          expandedNodes={expandedNodes}
+          onToggleExpand={handleToggleExpand}
+          filterText={filterText}
+          onFilterChange={setFilterText}
+          onAddPriceOverride={(planId) => {
+            const plan = selectedPlans.find(p => p.plan.id === planId)
+            if (plan) {
+              const newOverride = smartPriceOverride(plan)
+              handleAddPriceOverride(planId, newOverride)
+              setSelectedNodeId(`plan-${planId}-override-${newOverride.id}`)
+            }
+          }}
+          onAddQuantityUpdate={(planId) => {
+            const plan = selectedPlans.find(p => p.plan.id === planId)
+            if (plan) {
+              const newUpdate = smartQuantityUpdate(plan)
+              handleAddQuantityUpdate(planId, newUpdate)
+              setSelectedNodeId(`plan-${planId}-qty-${newUpdate.id}`)
+            }
+          }}
+          onShowAddMenu={() => setShowPlanSelector(true)}
+          scheduleMenuPlanId={scheduleMenuPlanId}
+          setScheduleMenuPlanId={setScheduleMenuPlanId}
+        />
+        <FormPanel
+          selectedNodeId={selectedNodeId}
+          selectedPlans={selectedPlans}
+          hideScheduleModule={hasScheduled}
+          contractId={contractId}
+          customer={customer}
+          currency={currency}
+          draftExpiry={draftExpiry}
+          language={language}
+          billingMethod={billingMethod}
+          onUpdateContractId={setContractId}
+          onUpdateCustomer={setCustomer}
+          onUpdateCurrency={setCurrency}
+          onUpdateDraftExpiry={setDraftExpiry}
+          onUpdateLanguage={setLanguage}
+          onUpdateBillingMethod={setBillingMethod}
+          onUpdatePlan={handleUpdatePlan}
+          onApplyEndDateToAll={handleApplyEndDateToAll}
+          onApplyStartDateToAll={handleApplyStartDateToAll}
+          onAddPriceOverride={(planId) => {
+            const plan = selectedPlans.find(p => p.plan.id === planId)
+            if (plan) {
+              const newOverride = smartPriceOverride(plan)
+              handleAddPriceOverride(planId, newOverride)
+              setSelectedNodeId(`plan-${planId}-override-${newOverride.id}`)
+            }
+          }}
+          onAddQuantityUpdate={(planId) => {
+            const plan = selectedPlans.find(p => p.plan.id === planId)
+            if (plan) {
+              const newUpdate = smartQuantityUpdate(plan)
+              handleAddQuantityUpdate(planId, newUpdate)
+              setSelectedNodeId(`plan-${planId}-qty-${newUpdate.id}`)
+            }
+          }}
+          onRemovePlan={handleRemovePlan}
+          onShowScheduleModal={(planId) => setScheduleModalPlanId(planId)}
+          onUpdatePriceOverride={handleUpdatePriceOverride}
+          onUpdateQuantityUpdate={handleUpdateQuantityUpdate}
+          onRemovePriceOverride={handleRemovePriceOverride}
+          onRemoveQuantityUpdate={handleRemoveQuantityUpdate}
+          onUpdateDiscount={handleUpdateDiscount}
+          onRemoveDiscount={handleRemoveDiscount}
+          onOpenScheduleInTree={(planId) => {
+            setSelectedNodeId(`plan-${planId}`)
+            setExpandedNodes(prev => new Set([...prev, `plan-${planId}`]))
+            setScheduleMenuPlanId(planId)
+          }}
+          onSelectNode={handleSelectNode}
+        />
+      </div>
+      <div className="flex border-t border-[#1c1c1c] overflow-hidden" style={{ height: "50%" }}>
+        {consoleColumnEl}
+      </div>
+    </div>
+  )
+
   const persistentOverlay = (
     <>
       {!showControlPanel && (
@@ -6516,27 +6546,29 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           onSelectNode={handleSelectNode}
         />
       </div>
-      <EditorAssistant
-        selectedPlans={selectedPlans}
-        selectedNodeId={selectedNodeId}
-        customer={customer}
-        currency={currency}
-        draftExpiry={draftExpiry}
-        onSelectNode={handleSelectNode}
-        onUpdatePlan={handleUpdatePlan}
-        onApplyEndDateToAll={handleApplyEndDateToAll}
-        onApplyStartDateToAll={handleApplyStartDateToAll}
-        onAddPriceOverride={handleAddPriceOverride}
-        onAddQuantityUpdate={handleAddQuantityUpdate}
-        onAddDiscount={handleAddDiscount}
-        onUpdateDiscount={handleUpdateDiscount}
-        onRemoveDiscount={handleRemoveDiscount}
-        onAddPlan={handleAddPlan}
-        onRemovePlan={handleRemovePlan}
-        onUpdateCustomer={setCustomer}
-        onUpdateCurrency={setCurrency}
-        onUpdateDraftExpiry={setDraftExpiry}
-      />
+      {consolePosition !== "inline" && (
+        <EditorAssistant
+          selectedPlans={selectedPlans}
+          selectedNodeId={selectedNodeId}
+          customer={customer}
+          currency={currency}
+          draftExpiry={draftExpiry}
+          onSelectNode={handleSelectNode}
+          onUpdatePlan={handleUpdatePlan}
+          onApplyEndDateToAll={handleApplyEndDateToAll}
+          onApplyStartDateToAll={handleApplyStartDateToAll}
+          onAddPriceOverride={handleAddPriceOverride}
+          onAddQuantityUpdate={handleAddQuantityUpdate}
+          onAddDiscount={handleAddDiscount}
+          onUpdateDiscount={handleUpdateDiscount}
+          onRemoveDiscount={handleRemoveDiscount}
+          onAddPlan={handleAddPlan}
+          onRemovePlan={handleRemovePlan}
+          onUpdateCustomer={setCustomer}
+          onUpdateCurrency={setCurrency}
+          onUpdateDraftExpiry={setDraftExpiry}
+        />
+      )}
     </div>
   )
 
@@ -6598,9 +6630,11 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   )
 
   // The main column: console replaces tree+form when console mode is active
-  const mainColumn = consolePosition !== "off" && consolePosition !== "over"
-    ? <div className="flex w-[580px] shrink-0 border-r border-[#1c1c1c] overflow-hidden">{consoleColumnEl}</div>
-    : leftColumn
+  const mainColumn = consolePosition === "inline"
+    ? inlineLeftColumn
+    : consolePosition !== "off" && consolePosition !== "over"
+      ? <div className="flex w-[580px] shrink-0 border-r border-[#1c1c1c] overflow-hidden">{consoleColumnEl}</div>
+      : leftColumn
 
   // "L+Hdr" — console spans full height including the header row
   if (consolePosition === "l+hdr") {
