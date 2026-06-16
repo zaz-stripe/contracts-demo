@@ -2398,10 +2398,7 @@ function TimelineVisualization({
         {months.map((m, i) => (
           <div
             key={i}
-            className={cn(
-              "h-full border-r",
-              m.month === 0 ? "border-[#d8dee4]" : "border-[#f0f1f4]",
-            )}
+            className={m.month === 0 ? "h-full border-r border-[#eeeff2]" : "h-full"}
             style={{ width: colWidth }}
           />
         ))}
@@ -2473,12 +2470,29 @@ function TimelineVisualization({
       ) : (
         <div ref={setScrollEl} className="flex-1 overflow-auto bg-white">
           <div style={{ width: Math.max(labelW + timelineWidth, availableWidth) }}>
-            {/* ===== Header: single row with month + year on Jan ===== */}
+            {/* ===== Header: year + month axis ===== */}
             <div className="sticky top-0 z-20 bg-white border-b border-[#ebeef1]">
+              {/* Year row */}
               <div className="flex">
                 <div
-                  className="shrink-0 sticky left-0 z-10 bg-white border-r border-[#ebeef1] flex items-center px-3"
-                  style={{ width: labelW, height: 36 }}
+                  className="shrink-0 sticky left-0 z-10 bg-white border-r border-[#ebeef1]"
+                  style={{ width: labelW }}
+                />
+                {yearGroups.map(group => (
+                  <div
+                    key={group.year}
+                    className="text-xs font-semibold text-[#353A44] px-2 py-2 border-r border-[#ebeef1] last:border-r-0"
+                    style={{ width: group.months.length * colWidth }}
+                  >
+                    {group.year}
+                  </div>
+                ))}
+              </div>
+              {/* Month row */}
+              <div className="flex border-t border-[#f0f1f4]">
+                <div
+                  className="shrink-0 sticky left-0 z-10 bg-white border-r border-[#ebeef1] flex items-center px-3 py-2"
+                  style={{ width: labelW }}
                 >
                   <span className="text-[10px] text-[#A0A8B4] font-semibold">Pricing lines</span>
                 </div>
@@ -2486,22 +2500,19 @@ function TimelineVisualization({
                   <div
                     key={i}
                     className={cn(
-                      "flex flex-col items-center justify-center border-r border-[#f0f1f4] last:border-r-0",
-                      m.month === 0 ? "text-[#353A44]" : "text-[#A0A8B4]",
+                      "text-[10px] text-center py-2",
+                      m.month === 0 ? "text-[#353A44] font-medium" : "text-[#A0A8B4]",
                     )}
-                    style={{ width: colWidth, height: 36 }}
+                    style={{ width: colWidth }}
                   >
-                    {m.month === 0 && (
-                      <span className="text-[9px] font-semibold leading-none mb-0.5">{m.year}</span>
-                    )}
-                    <span className={cn("text-[10px]", m.month === 0 ? "font-medium" : "")}>{m.label}</span>
+                    {m.label}
                   </div>
                 ))}
               </div>
             </div>
 
             {/* ===== As-of scrubber ruler ===== */}
-            <div className="sticky top-[36px] z-20 flex items-stretch bg-[#f8f9fb] border-b border-[#ebeef1]">
+            <div className="sticky top-[57px] z-20 flex items-stretch bg-[#f8f9fb] border-b border-[#ebeef1]">
               <div
                 className="shrink-0 sticky left-0 z-10 flex flex-col justify-center px-3 py-1.5 bg-[#f8f9fb] border-r border-[#ebeef1]"
                 style={{ width: labelW }}
@@ -2649,12 +2660,11 @@ function TimelineVisualization({
                       >
                         <Package className="w-3 h-3" />
                       </span>
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-[#353A44] truncate">{entry.plan.name}</span>
-                        <span className="text-[10px] text-[#A0A8B4]">{entry.quantity} units</span>
-                      </div>
+                      <span className="text-sm font-medium text-[#353A44] truncate">
+                        {entry.plan.name}
+                      </span>
                     </button>
-                    <div className="relative flex-1" style={{ height: 40 }}>
+                    <div className="relative flex-1" style={{ height: 52 }}>
                       <TrackGrid />
                       <button
                         onClick={() => onSelectNode(`plan-${entry.plan.id}-price`)}
@@ -2674,7 +2684,7 @@ function TimelineVisualization({
                   </div>
 
                   {/* Price sub-row (segmented) */}
-                  <div className="flex items-stretch border-t border-[#f4f5f7]">
+                  <div className="flex items-stretch">
                     <div
                       className="shrink-0 sticky left-0 z-10 flex items-center gap-2 pl-10 pr-3 py-2 bg-inherit border-r border-[#ebeef1]"
                       style={{ width: labelW }}
@@ -2682,7 +2692,7 @@ function TimelineVisualization({
                       <Tag className="w-3 h-3 text-[#A0A8B4] shrink-0" />
                       <span className="text-xs text-[#6c7688] truncate">Price / month</span>
                     </div>
-                    <div className="relative flex-1" style={{ height: 26 }}>
+                    <div className="relative flex-1" style={{ height: 38 }}>
                       <TrackGrid />
                       {priceSegs.map((seg, i) => {
                         const left = getPosition(seg.start)
@@ -2717,12 +2727,12 @@ function TimelineVisualization({
                             onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
                             onMouseLeave={hideTip}
                             className={cn(
-                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-colors border",
+                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-colors",
                               segSelected
-                                ? "bg-[#353A44] text-white border-[#353A44]"
+                                ? "bg-[#353A44] text-white"
                                 : seg.active
-                                  ? "bg-white text-[#353A44] border-[#cdd3db] hover:border-[#A0A8B4]"
-                                  : "bg-white text-[#6c7688] border-[#ebeef1] hover:border-[#A0A8B4]",
+                                  ? "bg-[#ede9ff] text-[#353A44]"
+                                  : "bg-[#f0f1f4] text-[#6c7688]",
                             )}
                             style={{ left, width }}
                           >
@@ -2735,7 +2745,67 @@ function TimelineVisualization({
 
 
 
-                  {/* Discount sub-rows */}
+                  {/* Units sub-row */}
+                  <div className="flex items-stretch">
+                    <div
+                      className="shrink-0 sticky left-0 z-10 flex items-center gap-2 pl-10 pr-3 py-2 bg-inherit border-r border-[#ebeef1]"
+                      style={{ width: labelW }}
+                    >
+                      <Hash className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                      <span className="text-xs text-[#6c7688] truncate">Units</span>
+                    </div>
+                    <div className="relative flex-1" style={{ height: 38 }}>
+                      <TrackGrid />
+                      {seatSegs.map((seg, i) => {
+                        const left = getPosition(seg.start)
+                        const width = getWidth(seg.start, seg.end)
+                        const segSelected =
+                          seg.id &&
+                          selectedNodeId === `plan-${entry.plan.id}-qty-${seg.id}`
+                        const before = lineStateAt(entry, new Date(seg.start.getTime() - 86400000)).mrr
+                        const after = lineStateAt(entry, seg.start).mrr
+                        const delta = seg.id ? after - before : 0
+                        return (
+                          <button
+                            key={i}
+                            onClick={() =>
+                              seg.id
+                                ? onSelectNode(`plan-${entry.plan.id}-qty-${seg.id}`)
+                                : onSelectNode(`plan-${entry.plan.id}-price`)
+                            }
+                            onMouseEnter={(e) =>
+                              showTip(e, seg.active ? "Scheduled quantity update" : "Base quantity", [
+                                { label: "Units", value: `${seg.value}` },
+                                { label: "Period", value: `${formatDateShort(seg.start)} → ${formatDateShort(seg.end)}` },
+                                ...(seg.id
+                                  ? [{
+                                      label: "Change",
+                                      value: `${delta >= 0 ? "+" : "−"}${fmtMoney(Math.abs(delta), currency)}/mo`,
+                                      tone: (delta >= 0 ? "pos" : "neg") as "pos" | "neg",
+                                    }]
+                                  : []),
+                              ])
+                            }
+                            onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
+                            onMouseLeave={hideTip}
+                            className={cn(
+                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-colors",
+                              segSelected
+                                ? "bg-[#353A44] text-white"
+                                : seg.active
+                                  ? "bg-[#e8f4fb] text-[#0a7ea4]"
+                                  : "bg-[#f0f1f4] text-[#6c7688]",
+                            )}
+                            style={{ left, width }}
+                          >
+                            {seg.value} units
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                                    {/* Discount sub-rows */}
                   {entry.discounts.map(discount => {
                     const dStart = new Date(discount.startDate)
                     const dEnd = new Date(discount.endDate)
@@ -2746,7 +2816,7 @@ function TimelineVisualization({
                     const discountSelected =
                       selectedNodeId === discountNodeId || discount.id === selectedDiscountId
                     return (
-                      <div key={discount.id} className="flex items-stretch border-t border-[#f4f5f7]">
+                      <div key={discount.id} className="flex items-stretch">
                         <button
                           onClick={() => onSelectNode(discountNodeId)}
                           className="shrink-0 sticky left-0 z-10 flex items-center gap-2 pl-10 pr-3 py-2 bg-inherit border-r border-[#ebeef1] text-left hover:bg-[#f5f6f8] transition-colors"
@@ -2760,10 +2830,10 @@ function TimelineVisualization({
                           <button
                             onClick={() => onSelectNode(discountNodeId)}
                             className={cn(
-                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border",
+                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all",
                               discountSelected
-                                ? "bg-[#ffe0b3] text-[#a85b00] border-[#a85b00] ring-1 ring-[#a85b00]"
-                                : "bg-[#fff4e6] text-[#a85b00] border-[#ffe0b3] hover:border-[#f0b46a]",
+                                ? "bg-[#ffe0b3] text-[#a85b00] ring-1 ring-[#a85b00]"
+                                : "bg-[#fff4e6] text-[#a85b00]",
                             )}
                             style={{ left: getPosition(dStart), width: getWidth(dStart, dEnd) }}
                           >
@@ -2778,6 +2848,29 @@ function TimelineVisualization({
             })}
 
 
+          {/* ===== Collections / invoices ===== */}
+          <div className="flex items-stretch border-b border-[#ebeef1] bg-white">
+            <div
+              className="shrink-0 sticky left-0 z-10 flex items-center px-3 py-3 bg-white border-r border-[#ebeef1]"
+              style={{ width: labelW }}
+            >
+              <span className="text-[10px] text-[#A0A8B4] font-semibold">Collections</span>
+            </div>
+            <div className="relative flex-1 py-3" style={{ minHeight: 72 }}>
+              <TrackGrid />
+              {months.map((m, i) => (
+                <button
+                  key={i}
+                  onClick={() => onShowInvoicePreview(m.date)}
+                  className="absolute top-1/2 -translate-y-1/2 w-9 h-12 rounded bg-[#f5f6f8] hover:bg-[#eceaff] transition-all flex flex-col items-center justify-center gap-1"
+                  style={{ left: i * colWidth + (colWidth - 36) / 2 }}
+                >
+                  <FileText className="w-3 h-3 text-[#A0A8B4]" />
+                  <span className="text-[8px] text-[#A0A8B4]">{m.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
           </div>
         </div>
       )}
@@ -5922,6 +6015,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const [consoleHeight, setConsoleHeight] = useState(50)
   const [consoleWidth, setConsoleWidth] = useState(580)
   const [showControlPanel, setShowControlPanel] = useState(false)
+  const widthDragRef = useRef<{ x: number; width: number } | null>(null)
+  const heightDragRef = useRef<{ y: number; height: number; containerH: number } | null>(null)
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -6320,6 +6415,22 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
 
   const inlineLeftColumn = (
     <div className="relative flex flex-col shrink-0 border-r border-[#ebeef1] overflow-hidden" style={{ width: consoleWidth }}>
+      {/* Right edge drag handle for width */}
+      <div
+        className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize z-50 group flex items-center justify-center"
+        onPointerDown={e => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          widthDragRef.current = { x: e.clientX, width: consoleWidth }
+        }}
+        onPointerMove={e => {
+          if (!widthDragRef.current) return
+          const dx = e.clientX - widthDragRef.current.x
+          setConsoleWidth(Math.max(300, Math.min(900, widthDragRef.current.width + dx)))
+        }}
+        onPointerUp={() => { widthDragRef.current = null }}
+      >
+        <div className="w-0.5 h-8 rounded-full bg-[#2a2a2a] group-hover:bg-[#533AFD] transition-colors" />
+      </div>
       <div
         className="flex overflow-hidden min-h-0"
         style={{
@@ -6408,6 +6519,28 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           onSelectNode={handleSelectNode}
         />
       </div>
+      {hasContractContent && (
+        <div
+          className="shrink-0 h-1 cursor-row-resize group flex items-center justify-center bg-[#111] hover:bg-[#533AFD]/40 transition-colors z-30"
+          onPointerDown={e => {
+            e.currentTarget.setPointerCapture(e.pointerId)
+            heightDragRef.current = {
+              y: e.clientY,
+              height: consoleHeight,
+              containerH: e.currentTarget.parentElement?.clientHeight ?? 600,
+            }
+          }}
+          onPointerMove={e => {
+            if (!heightDragRef.current) return
+            const { y, height, containerH } = heightDragRef.current
+            const dy = e.clientY - y
+            setConsoleHeight(Math.max(15, Math.min(85, Math.round(height - (dy / containerH) * 100))))
+          }}
+          onPointerUp={() => { heightDragRef.current = null }}
+        >
+          <div className="w-8 h-0.5 rounded-full bg-[#2a2a2a] group-hover:bg-[#533AFD] transition-colors" />
+        </div>
+      )}
       <div
         className="flex overflow-hidden"
         style={{
@@ -6661,14 +6794,51 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const mainColumn = consolePosition === "inline"
     ? inlineLeftColumn
     : consolePosition !== "off" && consolePosition !== "over"
-      ? <div className="flex shrink-0 border-r border-[#1c1c1c] overflow-hidden" style={{ width: consoleWidth }}>{consoleColumnEl}</div>
+      ? (
+        <div className="flex shrink-0 border-r border-[#1c1c1c] overflow-hidden relative" style={{ width: consoleWidth }}>
+          {consoleColumnEl}
+          <div
+            className={`absolute top-0 bottom-0 w-1.5 cursor-col-resize z-50 group flex items-center justify-center ${consolePosition === "right" ? "left-0" : "right-0"}`}
+            onPointerDown={e => {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              widthDragRef.current = { x: e.clientX, width: consoleWidth }
+            }}
+            onPointerMove={e => {
+              if (!widthDragRef.current) return
+              const dx = e.clientX - widthDragRef.current.x
+              const delta = consolePosition === "right" ? -dx : dx
+              setConsoleWidth(Math.max(300, Math.min(900, widthDragRef.current.width + delta)))
+            }}
+            onPointerUp={() => { widthDragRef.current = null }}
+          >
+            <div className="w-0.5 h-8 rounded-full bg-[#2a2a2a] group-hover:bg-[#533AFD] transition-colors" />
+          </div>
+        </div>
+      )
       : leftColumn
 
   // "L+Hdr" — console spans full height including the header row
   if (consolePosition === "l+hdr") {
     return (
       <div className="fixed inset-0 z-50 flex flex-row bg-white">
-        <div className="flex shrink-0 h-full" style={{ width: consoleWidth }}>{consoleColumnEl}</div>
+        <div className="flex shrink-0 h-full relative" style={{ width: consoleWidth }}>
+          {consoleColumnEl}
+          <div
+            className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize z-50 group flex items-center justify-center"
+            onPointerDown={e => {
+              e.currentTarget.setPointerCapture(e.pointerId)
+              widthDragRef.current = { x: e.clientX, width: consoleWidth }
+            }}
+            onPointerMove={e => {
+              if (!widthDragRef.current) return
+              const dx = e.clientX - widthDragRef.current.x
+              setConsoleWidth(Math.max(300, Math.min(900, widthDragRef.current.width + dx)))
+            }}
+            onPointerUp={() => { widthDragRef.current = null }}
+          >
+            <div className="w-0.5 h-8 rounded-full bg-[#2a2a2a] group-hover:bg-[#533AFD] transition-colors" />
+          </div>
+        </div>
         <div className="flex flex-col flex-1 overflow-hidden">
           {editorHeader}
           <div className="flex flex-1 overflow-hidden">
