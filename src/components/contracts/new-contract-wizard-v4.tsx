@@ -5621,12 +5621,14 @@ function ContractConsole({
   currency,
   draftExpiry,
   onExecuteCommand,
+  onDismiss,
 }: {
   selectedPlans: SelectedPlanEntry[]
   customer: { name: string; email: string } | null
   currency: string
   draftExpiry: string
   onExecuteCommand: (command: string) => void
+  onDismiss?: () => void
 }) {
   const [messages, setMessages] = useState<ConsoleMessage[]>([])
   const [input, setInput] = useState("")
@@ -5720,14 +5722,26 @@ function ContractConsole({
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#181818] shrink-0">
         <span className="text-[13px] font-medium text-[#d0d0d0] tracking-[-0.01em]">New conversation</span>
-        {messages.length > 0 && (
-          <button
-            onClick={() => setMessages([])}
-            className="text-[11px] text-[#404040] hover:text-[#666] transition-colors"
-          >
-            Clear
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {messages.length > 0 && (
+            <button
+              onClick={() => setMessages([])}
+              className="text-[11px] text-[#404040] hover:text-[#666] transition-colors"
+            >
+              Clear
+            </button>
+          )}
+          {onDismiss && (
+            <button
+              onClick={onDismiss}
+              className="text-[11px] text-[#404040] hover:text-[#888] transition-colors flex items-center gap-1"
+              title="Hide console"
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+              Editor only
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Message stream */}
@@ -6013,7 +6027,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const [hasScheduled, setHasScheduled] = useState(false)
 
   // Demo control panel (Cmd+/)
-  const [consolePosition, setConsolePosition] = useState<ConsolePosition>("off")
+  const [consolePosition, setConsolePosition] = useState<ConsolePosition>("inline")
   const [consoleHeight, setConsoleHeight] = useState(50)
   const [consoleWidth, setConsoleWidth] = useState(580)
   const [showControlPanel, setShowControlPanel] = useState(false)
@@ -6407,6 +6421,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       currency={currency}
       draftExpiry={draftExpiry}
       onExecuteCommand={executeContractCommand}
+      onDismiss={() => setConsolePosition("off")}
     />
   ) : null
 
@@ -6598,6 +6613,15 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     <div className="flex items-center justify-between h-14 px-5 border-b border-[#ebeef1] shrink-0">
       <h1 className="text-sm font-semibold text-[#353A44]">Contract {contractId}</h1>
       <div className="flex items-center gap-2">
+        {consolePosition === "off" && (
+          <button
+            onClick={() => setConsolePosition("inline")}
+            className="px-3 py-1.5 rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-sm font-medium text-[#353A44] transition-colors flex items-center gap-1.5"
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="0.5" y="0.5" width="11" height="11" rx="2.5" stroke="currentColor"/><path d="M3 4.5h6M3 6h4M3 7.5h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+            AI Console
+          </button>
+        )}
         <button
           onClick={onDiscard}
           className="px-3 py-1.5 rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-sm font-medium text-[#353A44] transition-colors"
