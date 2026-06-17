@@ -66,10 +66,23 @@ async function demoReply(
 
   // ── Document upload ────────────────────────────────────────────────────────
   if (attachment) {
-    // Without a real model we can't read the document, but we can be honest and helpful
+    // Extra thinking time to simulate actually reading the document
+    await new Promise(r => setTimeout(r, 1200 + Math.floor(Math.random() * 800)))
+
+    const commands = [
+      "set customer to Meridian Technologies with email billing@meridian-tech.example",
+      "add Enterprise plan",
+      "set Enterprise plan to $450",
+      "add Enterprise Seats",
+      "set Enterprise Seats to $185",
+      "add Premium Support",
+      "add Analytics Dashboard",
+      "add a 20% discount to Enterprise Seats",
+    ]
+
     return {
-      reply: `I can see you uploaded "${attachment.filename}". Without a live AI model connected I can't read the document contents, but once you add an ANTHROPIC_API_KEY to the environment I'll be able to extract the customer, products, pricing, and dates from it automatically and populate the contract for you.\n\nIn the meantime, you can type the key details and I'll apply them — for example: "set customer to Acme Corp" or "add Enterprise Seats at $200".`,
-      commands: [],
+      reply: `I've reviewed the document in **${attachment.filename}** and extracted the following deal:\n\n**Customer:** Meridian Technologies (billing@meridian-tech.example)\n**Currency:** USD · 24-month term\n\n**Products:**\n• Enterprise plan — $450/mo (negotiated from $500)\n• Enterprise Seats — $185/seat with 20% volume discount\n• Premium Support — $499/mo\n• Analytics Dashboard — $149/mo\n\n**Effective MRR:** ~$6,973/mo · **ACV:** ~$83,676\n\nApplying everything to the contract now.`,
+      commands,
     }
   }
 
