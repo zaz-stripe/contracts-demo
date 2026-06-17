@@ -6574,10 +6574,20 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const persistentOverlay = (
     <>
       {!showControlPanel && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[11px] font-medium pointer-events-none select-none">
-          <kbd className="font-sans">⌘</kbd><kbd className="font-sans">/</kbd>
-          <span className="text-white/60">options</span>
-        </div>
+        consolePosition === "off" ? (
+          <button
+            onClick={() => setConsolePosition("inline")}
+            className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-black transition-colors cursor-pointer select-none"
+          >
+            <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="0.5" y="0.5" width="10" height="10" rx="2.5" stroke="white" strokeOpacity="0.7"/><path d="M2.5 4h6M2.5 5.5h4M2.5 7h4.5" stroke="white" strokeOpacity="0.7" strokeWidth="1.1" strokeLinecap="round"/></svg>
+            AI Console
+          </button>
+        ) : (
+          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-sm text-white text-[11px] font-medium pointer-events-none select-none">
+            <kbd className="font-sans">⌘</kbd><kbd className="font-sans">/</kbd>
+            <span className="text-white/60">options</span>
+          </div>
+        )
       )}
       {showControlPanel && (
         <ControlPanel
