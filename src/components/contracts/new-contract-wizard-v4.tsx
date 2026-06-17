@@ -5956,9 +5956,9 @@ function ControlPanel({
       <div className="px-4 py-3 flex flex-col gap-3.5">
         <SegmentedRow
           label="Console slide"
-          options={["Right", "Left", "L+Hdr", "Over", "Inline"]}
-          value={consolePosition === "off" ? "" : consolePosition}
-          onChange={v => setConsolePosition(v as ConsolePosition)}
+          options={["Off", "Right", "Left", "L+Hdr", "Over", "Inline"]}
+          value={consolePosition === "off" ? "Off" : consolePosition}
+          onChange={v => setConsolePosition(v === "Off" ? "off" : v as ConsolePosition)}
           highlight
         />
 
