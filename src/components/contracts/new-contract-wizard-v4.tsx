@@ -8,6 +8,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { planCatalog, type PlanTemplate } from "@/lib/plan-catalog"
+import { SailDatePicker } from "./sail-date-picker"
 
 // =============================================================================
 // TYPES
@@ -212,25 +213,17 @@ function DurationFields({
 }) {
   return (
     <div className="grid grid-cols-2 gap-2">
-      <div>
-        <span className="block text-[11px] text-[#6c7688] mb-1">Start date</span>
-        <input
-          type="date"
-          value={toIso(start)}
-          onChange={e => onChange({ start: fromIso(e.target.value) })}
-          className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
-        />
-      </div>
-      <div>
-        <span className="block text-[11px] text-[#6c7688] mb-1">End date</span>
-        <input
-          type="date"
-          value={toIso(end)}
-          min={toIso(start)}
-          onChange={e => onChange({ end: fromIso(e.target.value) })}
-          className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
-        />
-      </div>
+      <SailDatePicker
+        label="Start date"
+        value={toIso(start)}
+        onChange={v => onChange({ start: fromIso(v) })}
+      />
+      <SailDatePicker
+        label="End date"
+        value={toIso(end)}
+        onChange={v => onChange({ end: fromIso(v) })}
+        disableBefore={toIso(start)}
+      />
     </div>
   )
 }
@@ -1299,28 +1292,17 @@ function FormPanel({
           </div>
 
           <div className="mb-6">
-            <label className="block text-xs font-normal text-[#596171] mb-1.5">Draft expiration</label>
-            <div className="relative">
-              <Calendar className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#A0A8B4]" />
-              <input
-                type="date"
-                value={draftExpiry}
-                max={maxDraftExpiryIso || undefined}
-                onChange={e => {
-                  // Guardrail: the draft can never expire on or after the
-                  // contract term starts. Clamp any later pick to the day before.
-                  let v = e.target.value
-                  if (maxDraftExpiryIso && v && v > maxDraftExpiryIso) v = maxDraftExpiryIso
-                  onUpdateDraftExpiry(v)
-                }}
-                className={cn(
-                  "w-full h-9 pl-9 pr-3 rounded-md border bg-white text-sm text-[#1A1A1A] outline-none transition-all",
-                  draftExpiryInvalid
-                    ? "border-[#e61947] focus:border-[#e61947] focus:ring-[3px] focus:ring-[#e61947]/15"
-                    : "border-[#dfe1e6] focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15",
-                )}
-              />
-            </div>
+            <SailDatePicker
+              label="Draft expiration"
+              value={draftExpiry}
+              onChange={v => {
+                let clamped = v
+                if (maxDraftExpiryIso && clamped > maxDraftExpiryIso) clamped = maxDraftExpiryIso
+                onUpdateDraftExpiry(clamped)
+              }}
+              disableAfter={maxDraftExpiryIso || undefined}
+              error={draftExpiryInvalid}
+            />
             {draftExpiryInvalid ? (
               <p className="mt-1.5 text-xs text-[#e61947]">
                 Draft expiration must be before the contract starts ({formatDateShort(new Date(termStartIso + "T00:00:00"))}).
@@ -1520,12 +1502,10 @@ function FormPanel({
 
         {/* Effective date */}
         <div className="mb-4">
-          <label className="block text-xs font-normal text-[#596171] mb-1.5">Effective date</label>
-          <input
-            type="date"
+          <SailDatePicker
+            label="Effective date"
             value={toIso(selectedQuantityUpdate.effectiveDate)}
-            onChange={e => onUpdateQuantityUpdate(selectedPlan.plan.id, selectedQuantityUpdate.id, { effectiveDate: fromIso(e.target.value) })}
-            className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+            onChange={v => onUpdateQuantityUpdate(selectedPlan.plan.id, selectedQuantityUpdate.id, { effectiveDate: fromIso(v) })}
           />
         </div>
 
@@ -2998,27 +2978,18 @@ function ScheduleModal({
 
           {/* Date range */}
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-medium text-[#596171] mb-1.5">
-                {scheduleType === "quantity" ? "Effective date" : "Start date"}
-              </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={e => setStartDate(e.target.value)}
-                className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
-              />
-            </div>
+            <SailDatePicker
+              label={scheduleType === "quantity" ? "Effective date" : "Start date"}
+              value={startDate}
+              onChange={setStartDate}
+            />
             {scheduleType !== "quantity" && (
-              <div>
-                <label className="block text-xs font-medium text-[#596171] mb-1.5">End date</label>
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                  className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
-                />
-              </div>
+              <SailDatePicker
+                label="End date"
+                value={endDate}
+                onChange={setEndDate}
+                disableBefore={startDate}
+              />
             )}
           </div>
 
@@ -4211,17 +4182,11 @@ function GetStartedScreen({
               </div>
 
               {/* Draft expiration */}
-              <div>
-                <label className="block text-xs font-medium text-[#596171] mb-1.5">
-                  Draft expiration
-                </label>
-                <input
-                  type="date"
-                  value={draftExpiry}
-                  onChange={e => setDraftExpiry(e.target.value)}
-                    className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
-                />
-              </div>
+              <SailDatePicker
+                label="Draft expiration"
+                value={draftExpiry}
+                onChange={setDraftExpiry}
+              />
             </div>
           </div>
 
@@ -4260,29 +4225,20 @@ function GetStartedScreen({
                       </button>
                     </div>
                     <div className="grid grid-cols-[1fr_auto_1fr_auto] items-end gap-2">
-                      <div>
-                        <label className="block text-[10px] font-medium text-[#6c7688] mb-1">
-                          Start
-                        </label>
-                        <input
-                          type="date"
-                          value={toIso(entry.startDate)}
-                          onChange={e => updatePlan(entry.plan.id, { startDate: fromIso(e.target.value) })}
-                          className="w-full h-8 px-2 rounded-md border border-[#d8dee4] bg-white text-xs text-[#353A44] outline-none focus:border-[#353A44]"
-                        />
-                      </div>
+                      <SailDatePicker
+                        label="Start"
+                        value={toIso(entry.startDate)}
+                        onChange={v => updatePlan(entry.plan.id, { startDate: fromIso(v) })}
+                        size="sm"
+                      />
                       <ArrowRight className="w-3.5 h-3.5 text-[#A0A8B4] mb-2" />
-                      <div>
-                        <label className="block text-[10px] font-medium text-[#6c7688] mb-1">
-                          End
-                        </label>
-                        <input
-                          type="date"
-                          value={toIso(entry.endDate)}
-                          onChange={e => updatePlan(entry.plan.id, { endDate: fromIso(e.target.value) })}
-                          className="w-full h-8 px-2 rounded-md border border-[#d8dee4] bg-white text-xs text-[#353A44] outline-none focus:border-[#353A44]"
-                        />
-                      </div>
+                      <SailDatePicker
+                        label="End"
+                        value={toIso(entry.endDate)}
+                        onChange={v => updatePlan(entry.plan.id, { endDate: fromIso(v) })}
+                        size="sm"
+                        disableBefore={toIso(entry.startDate)}
+                      />
                       <div className="w-16">
                         <label className="block text-[10px] font-medium text-[#6c7688] mb-1">Qty</label>
                         <input
