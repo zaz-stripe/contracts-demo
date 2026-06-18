@@ -727,7 +727,7 @@ function ProductForm({
   const fileRef = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+    <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
       <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
         <h2 className="text-sm font-semibold text-[#353A44] truncate">Update a product</h2>
         <button
@@ -869,7 +869,7 @@ function DiscountForm({
   }
 
   return (
-    <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+    <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
       <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
         <h2 className="text-sm font-semibold text-[#353A44] truncate">{discount.type === "markup" ? "Markup" : "Discount"}</h2>
         <button
@@ -1285,7 +1285,7 @@ function FormPanel({
   // General information form (contract root)
   if (selectedNodeId === "contract-root") {
     return (
-      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{contractId}</h2>
           <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#f5f6f8] text-[#A0A8B4]">
@@ -1455,7 +1455,7 @@ function FormPanel({
   // Account information form (customer)
   if (selectedNodeId === "customer") {
     return (
-      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{customer?.name || "Customer"}</h2>
           <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#f5f6f8] text-[#A0A8B4]">
@@ -1523,7 +1523,7 @@ function FormPanel({
   // Schedule price override form
   if (isPriceOverrideNode && selectedPlan && selectedOverride) {
     return (
-      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">Schedule price override</h2>
           <button 
@@ -1571,7 +1571,7 @@ function FormPanel({
   // Schedule quantity update form
   if (isQuantityUpdateNode && selectedPlan && selectedQuantityUpdate) {
     return (
-      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">Schedule quantity update</h2>
           <button 
@@ -1610,7 +1610,7 @@ function FormPanel({
   // Schedule action node - show modal trigger
   if (isScheduleNode && selectedPlan) {
     return (
-      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{selectedPlan.plan.name}</h2>
           <button 
@@ -1732,7 +1732,7 @@ function FormPanel({
   // Default plan form (when plan node is selected)
   if (selectedNodeId.startsWith("plan-") && selectedPlan) {
     return (
-      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{selectedPlan.plan.name}</h2>
           <button 
@@ -1873,7 +1873,7 @@ function FormPanel({
     const fee = selectedOneTimeFee
     const isSpecificDate = fee.billingDate !== "on_activation"
     return (
-      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+      <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
         <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{fee.name || "One-time fee"}</h2>
           <button
@@ -1968,7 +1968,7 @@ function FormPanel({
 
   // Empty state
   return (
-    <div className="w-[320px] border-r border-[#ebeef1] p-5 flex items-center justify-center bg-white">
+    <div className="flex-1 min-w-0 border-r border-[#ebeef1] p-5 flex items-center justify-center bg-white">
       <p className="text-sm text-[#A0A8B4]">Select an item to edit</p>
     </div>
   )
