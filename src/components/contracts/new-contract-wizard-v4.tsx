@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useMemo, useCallback, useEffect, useRef, Fragment } from "react"
-import { 
+import {
   Search, Calendar, ArrowRight, Package, X, Check, ChevronDown, ChevronRight, ChevronLeft,
   FileText, User, Tag, Hash, Plus, Trash2, Percent, Eye, MoreHorizontal,
-  Upload, UploadCloud, Pencil, Sparkles, Loader2, Send, AlertTriangle, Paperclip
+  Upload, UploadCloud, Pencil, Sparkles, Loader2, Send, AlertTriangle, Paperclip,
+  Receipt, TrendingUp
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { planCatalog, type PlanTemplate } from "@/lib/plan-catalog"
@@ -81,10 +82,19 @@ interface Discount {
   // covers every line; "specific" limits it to the plan ids in appliedItemIds.
   scope?: "everything" | "specific"
   appliedItemIds?: string[]
+  type?: "discount" | "markup"
+}
+
+interface OneTimeFee {
+  id: string
+  name: string
+  amount: string        // e.g. "5000"
+  billingDate: string   // ISO date, or "on_activation"
+  description?: string
 }
 
 // Tree node types
-type TreeNodeType = 
+type TreeNodeType =
   | "contract-root"
   | "customer"
   | "plan"
@@ -92,6 +102,8 @@ type TreeNodeType =
   | "price-override"
   | "quantity-update"
   | "discount"
+  | "markup"
+  | "one-time-fee"
   | "schedule"
   | "add-schedule"
   | "add-discount"
@@ -278,9 +290,18 @@ function discountInEffectAt(entry: SelectedPlanEntry, date: Date) {
 function lineStateAt(entry: SelectedPlanEntry, date: Date) {
   const price = priceInEffectAt(entry, date)
   const seats = seatsInEffectAt(entry, date)
-  const discountPct = discountInEffectAt(entry, date)
-  const mrr = price * seats * (1 - discountPct / 100)
-  return { price, seats, discountPct, mrr }
+  const t = date.getTime()
+  let multiplier = 1
+  for (const d of entry.discounts) {
+    const s = new Date(d.startDate).getTime()
+    const e = new Date(d.endDate).getTime()
+    if (!isNaN(s) && !isNaN(e) && s <= t && e >= t) {
+      if (d.type === "markup") multiplier *= (1 + d.percentage / 100)
+      else multiplier *= (1 - d.percentage / 100)
+    }
+  }
+  const mrr = price * seats * multiplier
+  return { price, seats, discountPct: 0, mrr }
 }
 
 // True when a discount (owned by `ownerId`) applies to the line `planId`,
@@ -359,6 +380,7 @@ function TreeSidebar({
   contractId,
   customer,
   selectedPlans,
+  oneTimeFees,
   selectedNodeId,
   onSelectNode,
   expandedNodes,
@@ -374,6 +396,7 @@ function TreeSidebar({
   contractId: string
   customer: { name: string; email: string } | null
   selectedPlans: SelectedPlanEntry[]
+  oneTimeFees: OneTimeFee[]
   selectedNodeId: string
   onSelectNode: (id: string) => void
   expandedNodes: Set<string>
@@ -459,30 +482,48 @@ function TreeSidebar({
       })
     })
 
-    // Discounts section — one node per discount so every discount the user adds
+    // Discounts and markups — one node per item so every one the user adds
     // shows up in the tree immediately (not collapsed into a single entry).
     selectedPlans.forEach(entry => {
       entry.discounts.forEach(discount => {
-        nodes.push({
-          id: `discount-${entry.plan.id}-${discount.id}`,
-          type: "discount",
-          // Discounts aren't named, so label them by their percentage.
-          label: `Discount - ${discount.percentage}%`,
-          planId: entry.plan.id,
-          discountId: discount.id,
-        })
+        if (discount.type === "markup") {
+          nodes.push({
+            id: `discount-${entry.plan.id}-${discount.id}`,
+            type: "markup",
+            label: `Markup - ${discount.percentage}%`,
+            planId: entry.plan.id,
+            discountId: discount.id,
+          })
+        } else {
+          nodes.push({
+            id: `discount-${entry.plan.id}-${discount.id}`,
+            type: "discount",
+            label: `Discount - ${discount.percentage}%`,
+            planId: entry.plan.id,
+            discountId: discount.id,
+          })
+        }
       })
     })
-    
+
+    // One-time fees
+    oneTimeFees.forEach(fee => {
+      nodes.push({
+        id: `one-time-fee-${fee.id}`,
+        type: "one-time-fee",
+        label: fee.name || "One-time fee",
+      })
+    })
+
     // Add button
     nodes.push({
       id: "add-plan",
       type: "add",
       label: "Add",
     })
-    
+
     return nodes
-  }, [contractId, customer, selectedPlans, expandedNodes])
+  }, [contractId, customer, selectedPlans, oneTimeFees, expandedNodes])
 
   const renderNode = (node: TreeNode, depth: number = 0) => {
     const isSelected = selectedNodeId === node.id
@@ -508,6 +549,8 @@ function TreeSidebar({
         case "price-override": return <Calendar className="w-3.5 h-3.5 text-[#6c7688]" />
         case "quantity-update": return <Hash className="w-3.5 h-3.5 text-[#6c7688]" />
         case "discount": return <Percent className="w-3.5 h-3.5 text-[#6c7688]" />
+        case "markup": return <TrendingUp className="w-3.5 h-3.5 text-[#6c7688]" />
+        case "one-time-fee": return <Receipt className="w-3.5 h-3.5 text-[#6c7688]" />
         case "add-schedule": return <Plus className="w-3.5 h-3.5 text-[#533AFD]" />
         case "add-discount": return <Percent className="w-3.5 h-3.5" />
         case "add": return <Plus className="w-3.5 h-3.5 text-[#533AFD]" />
@@ -828,7 +871,7 @@ function DiscountForm({
   return (
     <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
       <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
-        <h2 className="text-sm font-semibold text-[#353A44] truncate">Discount</h2>
+        <h2 className="text-sm font-semibold text-[#353A44] truncate">{discount.type === "markup" ? "Markup" : "Discount"}</h2>
         <button
           onClick={onRemove}
           className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#fef4f6] text-[#A0A8B4] hover:text-[#e61947] transition-colors shrink-0"
@@ -852,9 +895,9 @@ function DiscountForm({
           />
         </div>
 
-        {/* Discount amount */}
+        {/* Discount/Markup amount */}
         <div className="mb-4">
-          <label className="block text-xs font-normal text-[#596171] mb-1.5">Discount amount</label>
+          <label className="block text-xs font-normal text-[#596171] mb-1.5">{discount.type === "markup" ? "Markup amount" : "Discount amount"}</label>
           <div className="relative w-28">
             <input
               type="number"
@@ -1013,12 +1056,15 @@ function FormPanel({
   draftExpiry,
   language,
   billingMethod,
+  paymentMethod,
+  oneTimeFees,
   onUpdateContractId,
   onUpdateCustomer,
   onUpdateCurrency,
   onUpdateDraftExpiry,
   onUpdateLanguage,
   onUpdateBillingMethod,
+  onUpdatePaymentMethod,
   onUpdatePlan,
   onApplyEndDateToAll,
   onApplyStartDateToAll,
@@ -1034,6 +1080,8 @@ function FormPanel({
   onRemoveDiscount,
   onOpenScheduleInTree,
   onSelectNode,
+  onUpdateOneTimeFee,
+  onRemoveOneTimeFee,
 }: {
   selectedNodeId: string
   selectedPlans: SelectedPlanEntry[]
@@ -1044,12 +1092,15 @@ function FormPanel({
   draftExpiry: string
   language: string
   billingMethod: "auto" | "manual"
+  paymentMethod: "visa-4242" | "mc-5555" | "none"
+  oneTimeFees: OneTimeFee[]
   onUpdateContractId: (v: string) => void
   onUpdateCustomer: (c: { name: string; email: string }) => void
   onUpdateCurrency: (v: string) => void
   onUpdateDraftExpiry: (v: string) => void
   onUpdateLanguage: (v: string) => void
   onUpdateBillingMethod: (v: "auto" | "manual") => void
+  onUpdatePaymentMethod: (v: "visa-4242" | "mc-5555" | "none") => void
   onUpdatePlan: (planId: string, updates: Partial<SelectedPlanEntry>) => void
   onApplyEndDateToAll: (endDate: string) => void
   onApplyStartDateToAll: (startDate: string) => void
@@ -1065,6 +1116,8 @@ function FormPanel({
   onRemoveDiscount: (planId: string, discountId: string) => void
   onOpenScheduleInTree: (planId: string) => void
   onSelectNode: (id: string) => void
+  onUpdateOneTimeFee: (id: string, updates: Partial<OneTimeFee>) => void
+  onRemoveOneTimeFee: (id: string) => void
   }) {
 
   // When the user extends/changes one product's end date and other products
@@ -1201,6 +1254,12 @@ function FormPanel({
   // the price child node keeps the pricing/servicing form.
   const isPlanRootNode = !!selectedPlan && selectedNodeId === `plan-${selectedPlan.plan.id}`
 
+  // One-time fee node
+  const isOneTimeFeeNode = selectedNodeId.startsWith("one-time-fee-")
+  const selectedOneTimeFee = isOneTimeFeeNode
+    ? oneTimeFees.find(f => `one-time-fee-${f.id}` === selectedNodeId) ?? null
+    : null
+
   // Each discount has its own tree node (id: `discount-${planId}-${discountId}`).
   // Resolve the exact plan + discount the selected node points at.
   const isDiscountNode = selectedNodeId.startsWith("discount-")
@@ -1323,21 +1382,38 @@ function FormPanel({
               <span className="block text-sm font-medium text-[#353A44]">
                 Automatically charge a payment method on file
               </span>
-              <span className="mt-2 flex items-center gap-2">
-                <span className="w-8 h-5 rounded bg-[#1a1f71] flex items-center justify-center text-[8px] font-bold text-white tracking-tight">
-                  VISA
-                </span>
-                <span className="text-sm text-[#353A44]">•••• 4242</span>
-                <span className="w-6 h-6 flex items-center justify-center rounded text-[#A0A8B4] hover:text-[#533AFD]">
-                  <Pencil className="w-3.5 h-3.5" />
-                </span>
-              </span>
             </span>
           </button>
 
+          {billingMethod === "auto" && (
+            <div className="mt-1 mb-4 p-3 rounded-md border border-[#dfe1e6] bg-[#fafbfc]">
+              <div className="text-xs font-medium text-[#596171] mb-2">Payment method</div>
+              {[
+                { id: "visa-4242", label: "Visa •••• 4242", badge: "VISA", color: "#1a1f71" },
+                { id: "mc-5555", label: "Mastercard •••• 5555", badge: "MC", color: "#eb001b" },
+              ].map(pm => (
+                <button
+                  key={pm.id}
+                  onClick={() => onUpdatePaymentMethod(pm.id as "visa-4242" | "mc-5555" | "none")}
+                  className="w-full flex items-center gap-2.5 py-1.5 text-left"
+                >
+                  <span className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                    paymentMethod === pm.id ? "border-[#533AFD]" : "border-[#d8dee4]")}>
+                    {paymentMethod === pm.id && <span className="w-2 h-2 rounded-full bg-[#533AFD]" />}
+                  </span>
+                  <span className="w-8 h-5 rounded flex items-center justify-center text-[8px] font-bold text-white shrink-0"
+                    style={{ background: pm.color }}>
+                    {pm.badge}
+                  </span>
+                  <span className="text-sm text-[#353A44]">{pm.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
           <button
             onClick={() => onUpdateBillingMethod("manual")}
-            className="w-full flex items-start gap-3 text-left"
+            className="w-full flex items-start gap-3 text-left mb-4"
           >
             <span
               className={cn(
@@ -1356,6 +1432,21 @@ function FormPanel({
               </span>
             </span>
           </button>
+
+          {/* Collection status */}
+          <div className="flex items-center gap-2 py-2 px-3 rounded-md border border-[#ebeef1] bg-[#fafbfc]">
+            <span className={cn("w-2 h-2 rounded-full shrink-0",
+              billingMethod === "auto" && paymentMethod !== "none"
+                ? "bg-[#2b8700]"
+                : "bg-[#f59e0b]"
+            )} />
+            <span className="text-xs text-[#596171]">
+              Collection status:{" "}
+              <span className="font-medium text-[#353A44]">
+                {billingMethod === "auto" && paymentMethod !== "none" ? "Active" : "Pending payment method"}
+              </span>
+            </span>
+          </div>
         </div>
       </div>
     )
@@ -1772,6 +1863,104 @@ function FormPanel({
             </div>
           </div>
         )}
+        </div>
+      </div>
+    )
+  }
+
+  // One-time fee form
+  if (isOneTimeFeeNode && selectedOneTimeFee) {
+    const fee = selectedOneTimeFee
+    const isSpecificDate = fee.billingDate !== "on_activation"
+    return (
+      <div className="w-[320px] border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
+        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+          <h2 className="text-sm font-semibold text-[#353A44] truncate">{fee.name || "One-time fee"}</h2>
+          <button
+            onClick={() => onRemoveOneTimeFee(fee.id)}
+            className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#fef4f6] text-[#A0A8B4] hover:text-[#e61947] transition-colors shrink-0"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-auto p-5">
+          {/* Name */}
+          <div className="mb-4">
+            <label className="block text-xs font-normal text-[#596171] mb-1.5">Name</label>
+            <input
+              type="text"
+              value={fee.name}
+              onChange={e => onUpdateOneTimeFee(fee.id, { name: e.target.value })}
+              className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+            />
+          </div>
+
+          {/* Description */}
+          <div className="mb-4">
+            <label className="block text-xs font-normal text-[#596171] mb-1.5">Description</label>
+            <input
+              type="text"
+              value={fee.description ?? ""}
+              onChange={e => onUpdateOneTimeFee(fee.id, { description: e.target.value })}
+              className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+            />
+          </div>
+
+          {/* Amount */}
+          <div className="mb-4">
+            <label className="block text-xs font-normal text-[#596171] mb-1.5">Amount ($)</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#A0A8B4]">$</span>
+              <input
+                type="number"
+                min={0}
+                value={fee.amount}
+                onChange={e => onUpdateOneTimeFee(fee.id, { amount: e.target.value })}
+                className="w-full h-9 pl-7 pr-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+              />
+            </div>
+          </div>
+
+          {/* Billing date */}
+          <div className="mb-4">
+            <label className="block text-xs font-normal text-[#596171] mb-1.5">Billing date</label>
+            <div className="space-y-2">
+              <button
+                onClick={() => onUpdateOneTimeFee(fee.id, { billingDate: "on_activation" })}
+                className="w-full flex items-center gap-2.5 text-left"
+              >
+                <span className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                  !isSpecificDate ? "border-[#533AFD]" : "border-[#d8dee4]")}>
+                  {!isSpecificDate && <span className="w-2 h-2 rounded-full bg-[#533AFD]" />}
+                </span>
+                <span className="text-sm text-[#353A44]">On contract activation</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (!isSpecificDate) {
+                    const today = new Date().toISOString().slice(0, 10)
+                    onUpdateOneTimeFee(fee.id, { billingDate: today })
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 text-left"
+              >
+                <span className={cn("w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-colors",
+                  isSpecificDate ? "border-[#533AFD]" : "border-[#d8dee4]")}>
+                  {isSpecificDate && <span className="w-2 h-2 rounded-full bg-[#533AFD]" />}
+                </span>
+                <span className="text-sm text-[#353A44]">Specific date</span>
+              </button>
+            </div>
+            {isSpecificDate && (
+              <div className="mt-2">
+                <SailDatePicker
+                  label=""
+                  value={fee.billingDate}
+                  onChange={v => onUpdateOneTimeFee(fee.id, { billingDate: v })}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     )
@@ -3249,12 +3438,16 @@ function PlanSelectorModal({
   onClose,
   onSelectPlan,
   onAddDiscount,
+  onAddMarkup,
+  onAddOneTimeFee,
   canAddDiscount,
   existingPlanIds,
 }: {
   onClose: () => void
   onSelectPlan: (plan: PlanTemplate) => void
   onAddDiscount: () => void
+  onAddMarkup: () => void
+  onAddOneTimeFee: () => void
   canAddDiscount: boolean
   existingPlanIds: string[]
 }) {
@@ -3368,6 +3561,30 @@ function PlanSelectorModal({
               <span>Discount</span>
             </span>
             <span className="text-xs text-[#A0A8B4]">{canAddDiscount ? "Add % discount" : "Add a product first"}</span>
+          </button>
+          <button
+            onClick={() => { onAddMarkup(); onClose(); }}
+            disabled={!canAddDiscount}
+            className={cn(
+              "w-full flex items-center justify-between px-3 py-2 text-sm transition-colors",
+              canAddDiscount ? "text-[#533AFD] hover:bg-[#f5f6f8]" : "text-[#C4BBF8] cursor-not-allowed",
+            )}
+          >
+            <span className="flex items-center gap-2">
+              <Plus className="w-3.5 h-3.5" />
+              <span>Markup</span>
+            </span>
+            <span className="text-xs text-[#A0A8B4]">{canAddDiscount ? "Add % markup" : "Add a product first"}</span>
+          </button>
+          <button
+            onClick={() => { onAddOneTimeFee(); onClose(); }}
+            className="w-full flex items-center justify-between px-3 py-2 text-sm text-[#533AFD] hover:bg-[#f5f6f8] transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <Plus className="w-3.5 h-3.5" />
+              <span>One-time fee</span>
+            </span>
+            <span className="text-xs text-[#A0A8B4]">Flat charge</span>
           </button>
         </div>
 
@@ -5952,6 +6169,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const [draftExpiry, setDraftExpiry] = useState(initialContract?.draftExpiry ?? defaultDraftExpiry())
   const [language, setLanguage] = useState("English")
   const [billingMethod, setBillingMethod] = useState<"auto" | "manual">(initialContract?.billingMethod ?? "auto")
+  const [paymentMethod, setPaymentMethod] = useState<"visa-4242" | "mc-5555" | "none">("visa-4242")
+  const [oneTimeFees, setOneTimeFees] = useState<OneTimeFee[]>([])
   const defaultStart = formatDateValue(new Date())
   const defaultEnd = formatDateValue(addMonths(new Date(), 24))
 
@@ -6149,6 +6368,50 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     ))
     setHasScheduled(true)
   }, [selectedPlans])
+
+  // One-time fee handlers
+  const handleAddOneTimeFee = useCallback(() => {
+    const fee: OneTimeFee = {
+      id: generateId(),
+      name: "Setup fee",
+      amount: "0",
+      billingDate: "on_activation",
+      description: "",
+    }
+    setOneTimeFees(prev => [...prev, fee])
+    setSelectedNodeId(`one-time-fee-${fee.id}`)
+  }, [])
+
+  const handleUpdateOneTimeFee = useCallback((id: string, updates: Partial<OneTimeFee>) => {
+    setOneTimeFees(prev => prev.map(f => f.id === id ? { ...f, ...updates } : f))
+  }, [])
+
+  const handleRemoveOneTimeFee = useCallback((id: string) => {
+    setOneTimeFees(prev => prev.filter(f => f.id !== id))
+    setSelectedNodeId("contract-root")
+  }, [])
+
+  // Markup handler — identical to handleCreateDiscount but with type: "markup"
+  const handleCreateMarkup = useCallback(() => {
+    setSelectedPlans(prev => {
+      if (prev.length === 0) return prev
+      const target = prev[0]
+      const newMarkup: Discount = {
+        id: `discount-${Date.now()}`,
+        name: "",
+        percentage: 10,
+        startDate: target.startDate,
+        endDate: target.endDate,
+        scope: "everything",
+        appliedItemIds: [],
+        type: "markup",
+      }
+      setSelectedNodeId(`discount-${target.plan.id}-${newMarkup.id}`)
+      return prev.map((p, i) => (i === 0 ? { ...p, discounts: [...p.discounts, newMarkup] } : p))
+    })
+    setHasScheduled(true)
+    setShowPlanSelector(false)
+  }, [])
 
   // Executes a command string from the console agent — mirrors the same mutations
   // the form and tree expose so the AI-driven path stays fully in sync.
@@ -6430,6 +6693,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           contractId={contractId}
           customer={customer}
           selectedPlans={selectedPlans}
+          oneTimeFees={oneTimeFees}
           selectedNodeId={selectedNodeId}
           onSelectNode={handleSelectNode}
           expandedNodes={expandedNodes}
@@ -6466,12 +6730,15 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           draftExpiry={draftExpiry}
           language={language}
           billingMethod={billingMethod}
+          paymentMethod={paymentMethod}
+          oneTimeFees={oneTimeFees}
           onUpdateContractId={setContractId}
           onUpdateCustomer={setCustomer}
           onUpdateCurrency={setCurrency}
           onUpdateDraftExpiry={setDraftExpiry}
           onUpdateLanguage={setLanguage}
           onUpdateBillingMethod={setBillingMethod}
+          onUpdatePaymentMethod={setPaymentMethod}
           onUpdatePlan={handleUpdatePlan}
           onApplyEndDateToAll={handleApplyEndDateToAll}
           onApplyStartDateToAll={handleApplyStartDateToAll}
@@ -6505,6 +6772,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
             setScheduleMenuPlanId(planId)
           }}
           onSelectNode={handleSelectNode}
+          onUpdateOneTimeFee={handleUpdateOneTimeFee}
+          onRemoveOneTimeFee={handleRemoveOneTimeFee}
         />
       </div>
       {hasContractContent && (
@@ -6637,6 +6906,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           contractId={contractId}
           customer={customer}
           selectedPlans={selectedPlans}
+          oneTimeFees={oneTimeFees}
           selectedNodeId={selectedNodeId}
           onSelectNode={handleSelectNode}
           expandedNodes={expandedNodes}
@@ -6673,12 +6943,15 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           draftExpiry={draftExpiry}
           language={language}
           billingMethod={billingMethod}
+          paymentMethod={paymentMethod}
+          oneTimeFees={oneTimeFees}
           onUpdateContractId={setContractId}
           onUpdateCustomer={setCustomer}
           onUpdateCurrency={setCurrency}
           onUpdateDraftExpiry={setDraftExpiry}
           onUpdateLanguage={setLanguage}
           onUpdateBillingMethod={setBillingMethod}
+          onUpdatePaymentMethod={setPaymentMethod}
           onUpdatePlan={handleUpdatePlan}
           onApplyEndDateToAll={handleApplyEndDateToAll}
           onApplyStartDateToAll={handleApplyStartDateToAll}
@@ -6712,6 +6985,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
             setScheduleMenuPlanId(planId)
           }}
           onSelectNode={handleSelectNode}
+          onUpdateOneTimeFee={handleUpdateOneTimeFee}
+          onRemoveOneTimeFee={handleRemoveOneTimeFee}
         />
       </div>
       {consolePosition !== "inline" && (
@@ -6761,6 +7036,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           onClose={() => setShowPlanSelector(false)}
           onSelectPlan={handleAddPlan}
           onAddDiscount={handleCreateDiscount}
+          onAddMarkup={handleCreateMarkup}
+          onAddOneTimeFee={handleAddOneTimeFee}
           canAddDiscount={selectedPlans.length > 0}
           existingPlanIds={selectedPlans.map(p => p.plan.id)}
         />

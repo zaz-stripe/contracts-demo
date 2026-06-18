@@ -33,6 +33,15 @@ export interface V4PlanLine {
     multiplier?: number
   }[]
   quantityUpdates: { id: string; effectiveDate: string; quantity: number }[]
+  discounts?: {
+    id: string
+    name: string
+    percentage: number
+    startDate: string
+    endDate: string
+    scope?: "everything" | "specific"
+    appliedItemIds?: string[]
+  }[]
 }
 
 export interface ContractDetailV4Data {
@@ -487,6 +496,31 @@ function PricingRow({ plan }: { plan: V4PlanLine }) {
             <td className={cn(cellBase, "text-right", muted)}>{fmtUnit(sticker)}</td>
             <td className={cn(cellBase, "text-[#596171] pl-8")}>{typeLabel}</td>
             <td className={cn(cellBase, "text-right font-medium text-[#353A44]")}>{fmtUnit(contract)}</td>
+            <td className={cellBase}>
+              <button className="text-[#A0A8B4] hover:text-[#596171]">
+                <MoreHorizontal className="w-4 h-4" />
+              </button>
+            </td>
+          </tr>
+        )
+      })}
+
+      {/* Discount rows */}
+      {(plan.discounts ?? []).map((d) => {
+        const discountedPrice = sticker * (1 - d.percentage / 100)
+        return (
+          <tr key={d.id} className="border-b border-[#EBEEF1]">
+            <td className={cellBase} />
+            <td className={cn(cellBase, "text-[#596171]")}>{fmtDate(d.startDate)}</td>
+            <td className={cn(cellBase, "text-[#596171]")}>{fmtDate(d.endDate)}</td>
+            <td className={cn(cellBase, "text-[#596171]")}>Monthly</td>
+            <td className={cn(cellBase, muted)}>—</td>
+            <td className={cn(cellBase, "text-right", muted)}>{fmtUnit(sticker)}</td>
+            <td className={cn(cellBase, "text-[#596171] pl-8")}>
+              Discount
+              <span className="text-[#A0A8B4]"> ({d.percentage}% off)</span>
+            </td>
+            <td className={cn(cellBase, "text-right font-medium text-[#353A44]")}>{fmtUnit(discountedPrice)}</td>
             <td className={cellBase}>
               <button className="text-[#A0A8B4] hover:text-[#596171]">
                 <MoreHorizontal className="w-4 h-4" />
