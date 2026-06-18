@@ -699,7 +699,7 @@ function TreeSidebar({
       
       {/* Tree */}
       <div className="flex-1 overflow-auto p-2">
-        {treeNodes.map(node => renderNode(node, 0))}
+        {treeNodes.map(node => renderNode(node, node.type === "contract-root" ? 0 : 1))}
       </div>
     </div>
   )
