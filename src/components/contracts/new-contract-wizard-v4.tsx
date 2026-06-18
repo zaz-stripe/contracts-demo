@@ -684,7 +684,7 @@ function TreeSidebar({
   return (
     <div className="w-[260px] border-r border-[#ebeef1] flex flex-col bg-white">
       {/* Search */}
-      <div className="h-12 flex items-center px-3 border-b border-[#ebeef1] shrink-0">
+      <div className="h-12 flex items-center px-3 shrink-0">
         <div className="relative w-full">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#A0A8B4]" />
           <input
@@ -728,7 +728,7 @@ function ProductForm({
 
   return (
     <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-      <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+      <div className="flex items-center justify-between px-5 h-12 shrink-0">
         <h2 className="text-sm font-semibold text-[#353A44] truncate">Update a product</h2>
         <button
           onClick={onRemove}
@@ -870,7 +870,7 @@ function DiscountForm({
 
   return (
     <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-      <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+      <div className="flex items-center justify-between px-5 h-12 shrink-0">
         <h2 className="text-sm font-semibold text-[#353A44] truncate">{discount.type === "markup" ? "Markup" : "Discount"}</h2>
         <button
           onClick={onRemove}
@@ -1286,7 +1286,7 @@ function FormPanel({
   if (selectedNodeId === "contract-root") {
     return (
       <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 h-12 shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{contractId}</h2>
           <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#f5f6f8] text-[#A0A8B4]">
             <MoreHorizontal className="w-4 h-4" />
@@ -1456,7 +1456,7 @@ function FormPanel({
   if (selectedNodeId === "customer") {
     return (
       <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 h-12 shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{customer?.name || "Customer"}</h2>
           <button className="w-7 h-7 flex items-center justify-center rounded-md hover:bg-[#f5f6f8] text-[#A0A8B4]">
             <MoreHorizontal className="w-4 h-4" />
@@ -1524,7 +1524,7 @@ function FormPanel({
   if (isPriceOverrideNode && selectedPlan && selectedOverride) {
     return (
       <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 h-12 shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">Schedule price override</h2>
           <button 
             onClick={() => onRemovePriceOverride(selectedPlan.plan.id, selectedOverride.id)}
@@ -1572,7 +1572,7 @@ function FormPanel({
   if (isQuantityUpdateNode && selectedPlan && selectedQuantityUpdate) {
     return (
       <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 h-12 shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">Schedule quantity update</h2>
           <button 
             onClick={() => onRemoveQuantityUpdate(selectedPlan.plan.id, selectedQuantityUpdate.id)}
@@ -1611,7 +1611,7 @@ function FormPanel({
   if (isScheduleNode && selectedPlan) {
     return (
       <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 h-12 shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{selectedPlan.plan.name}</h2>
           <button 
             onClick={() => onRemovePlan(selectedPlan.plan.id)}
@@ -1731,7 +1731,7 @@ function FormPanel({
   if (selectedNodeId.startsWith("plan-") && selectedPlan) {
     return (
       <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 h-12 shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{selectedPlan.plan.name}</h2>
           <button 
             onClick={() => onRemovePlan(selectedPlan.plan.id)}
@@ -1870,7 +1870,7 @@ function FormPanel({
     const isSpecificDate = fee.billingDate !== "on_activation"
     return (
       <div className="flex-1 min-w-0 border-r border-[#ebeef1] flex flex-col bg-white overflow-hidden">
-        <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 h-12 shrink-0">
           <h2 className="text-sm font-semibold text-[#353A44] truncate">{fee.name || "One-time fee"}</h2>
           <button
             onClick={() => onRemoveOneTimeFee(fee.id)}
@@ -2579,7 +2579,7 @@ function TimelineVisualization({
   return (
     <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 h-12 border-b border-[#ebeef1] bg-white shrink-0">
+      <div className="flex items-center justify-between px-4 h-12 bg-white shrink-0">
         <span className="text-sm font-semibold text-[#353A44]">
           {viewMode === "timeline" ? "Timeline" : "Service agreement"}
         </span>
@@ -4087,7 +4087,7 @@ function GetStartedScreen({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between h-14 px-5 border-b border-[#ececf1] shrink-0">
+      <div className="flex items-center justify-between h-14 px-5 shrink-0">
         <div className="flex items-center gap-2.5">
           <button
             onClick={onDiscard}
@@ -4836,7 +4836,7 @@ function ConfirmSaveModal({
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center justify-between px-5 py-4 shrink-0">
           <div>
             <h2 className="text-base font-semibold text-[#353A44]">Review &amp; save contract</h2>
             <p className="text-xs text-[#6c7688] mt-0.5">{contractId}</p>
@@ -6859,7 +6859,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
 
   // Shared sub-trees extracted to avoid repeating them across layout modes.
   const editorHeader = (
-    <div className="flex items-center justify-between h-14 px-5 border-b border-[#ebeef1] shrink-0">
+    <div className="flex items-center justify-between h-14 px-5 shrink-0">
       <h1 className="text-sm font-semibold text-[#353A44]">Contract {contractId}</h1>
       <div className="flex items-center gap-2">
         {consolePosition === "off" && (
