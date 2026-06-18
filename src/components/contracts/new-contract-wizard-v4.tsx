@@ -392,6 +392,7 @@ function TreeSidebar({
   onShowAddMenu,
   scheduleMenuPlanId,
   setScheduleMenuPlanId,
+  className,
 }: {
   contractId: string
   customer: { name: string; email: string } | null
@@ -408,6 +409,7 @@ function TreeSidebar({
   onShowAddMenu: () => void
   scheduleMenuPlanId: string | null
   setScheduleMenuPlanId: (id: string | null) => void
+  className?: string
 }) {
 
   // Build tree structure
@@ -682,7 +684,7 @@ function TreeSidebar({
   }
 
   return (
-    <div className="w-[260px] border-r border-[#ebeef1] flex flex-col bg-white">
+    <div className={cn("w-[260px] border-r border-[#ebeef1] flex flex-col bg-white", className)}>
       {/* Search */}
       <div className="h-12 flex items-center px-3 shrink-0">
         <div className="relative w-full">
@@ -6199,6 +6201,16 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const widthDragRef = useRef<{ x: number; width: number } | null>(null)
   const heightDragRef = useRef<{ y: number; height: number; containerH: number } | null>(null)
 
+  const [isMobile, setIsMobile] = useState(false)
+  const [mobileBottomView, setMobileBottomView] = useState<"tree" | "form">("tree")
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)")
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "/") {
@@ -6299,7 +6311,12 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     if (id === "add-plan") {
       setShowPlanSelector(true)
     }
-  }, [selectedPlans])
+
+    // On mobile with console off, tapping a node opens the form panel
+    if (window.innerWidth < 768 && consolePosition === "off") {
+      setMobileBottomView("form")
+    }
+  }, [selectedPlans, consolePosition])
 
   const handleUpdatePlan = useCallback((planId: string, updates: Partial<SelectedPlanEntry>) => {
     setSelectedPlans(prev => prev.map(p => 
@@ -7099,6 +7116,131 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
         </div>
       )
       : leftColumn
+
+  // Mobile layout — stacks preview on top, action panel on bottom
+  if (isMobile) {
+    const mobileBottomPanel = consolePosition !== "off" ? (
+      <div className="shrink-0 flex flex-col overflow-hidden" style={{ height: "50%" }}>
+        {consoleColumnEl}
+      </div>
+    ) : mobileBottomView === "form" && selectedNodeId ? (
+      <div className="shrink-0 flex flex-col overflow-hidden border-t border-[#ebeef1] bg-white" style={{ height: "55%" }}>
+        <div className="flex items-center gap-2 px-4 h-11 border-b border-[#ebeef1] shrink-0">
+          <button
+            onClick={() => { setMobileBottomView("tree"); setSelectedNodeId("contract-root") }}
+            className="flex items-center gap-1.5 text-sm text-[#533AFD] font-medium"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            Overview
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto">
+          <FormPanel
+            selectedNodeId={selectedNodeId}
+            selectedPlans={selectedPlans}
+            hideScheduleModule={hasScheduled}
+            contractId={contractId}
+            customer={customer}
+            currency={currency}
+            draftExpiry={draftExpiry}
+            language={language}
+            billingMethod={billingMethod}
+            paymentMethod={paymentMethod}
+            oneTimeFees={oneTimeFees}
+            onUpdateContractId={setContractId}
+            onUpdateCustomer={setCustomer}
+            onUpdateCurrency={setCurrency}
+            onUpdateDraftExpiry={setDraftExpiry}
+            onUpdateLanguage={setLanguage}
+            onUpdateBillingMethod={setBillingMethod}
+            onUpdatePaymentMethod={setPaymentMethod}
+            onUpdatePlan={handleUpdatePlan}
+            onApplyEndDateToAll={handleApplyEndDateToAll}
+            onApplyStartDateToAll={handleApplyStartDateToAll}
+            onAddPriceOverride={(planId) => {
+              const plan = selectedPlans.find(p => p.plan.id === planId)
+              if (plan) {
+                const newOverride = smartPriceOverride(plan)
+                handleAddPriceOverride(planId, newOverride)
+                setSelectedNodeId(`plan-${planId}-override-${newOverride.id}`)
+              }
+            }}
+            onAddQuantityUpdate={(planId) => {
+              const plan = selectedPlans.find(p => p.plan.id === planId)
+              if (plan) {
+                const newUpdate = smartQuantityUpdate(plan)
+                handleAddQuantityUpdate(planId, newUpdate)
+                setSelectedNodeId(`plan-${planId}-qty-${newUpdate.id}`)
+              }
+            }}
+            onRemovePlan={handleRemovePlan}
+            onShowScheduleModal={(planId) => setScheduleModalPlanId(planId)}
+            onUpdatePriceOverride={handleUpdatePriceOverride}
+            onUpdateQuantityUpdate={handleUpdateQuantityUpdate}
+            onRemovePriceOverride={handleRemovePriceOverride}
+            onRemoveQuantityUpdate={handleRemoveQuantityUpdate}
+            onUpdateDiscount={handleUpdateDiscount}
+            onRemoveDiscount={handleRemoveDiscount}
+            onOpenScheduleInTree={(planId) => {
+              setSelectedNodeId(`plan-${planId}`)
+              setExpandedNodes(prev => new Set([...prev, `plan-${planId}`]))
+              setScheduleMenuPlanId(planId)
+            }}
+            onSelectNode={handleSelectNode}
+            onUpdateOneTimeFee={handleUpdateOneTimeFee}
+            onRemoveOneTimeFee={handleRemoveOneTimeFee}
+          />
+        </div>
+      </div>
+    ) : (
+      <div className="shrink-0 flex flex-col overflow-hidden border-t border-[#ebeef1] bg-white" style={{ height: "50%" }}>
+        <TreeSidebar
+          contractId={contractId}
+          customer={customer}
+          selectedPlans={selectedPlans}
+          oneTimeFees={oneTimeFees}
+          selectedNodeId={selectedNodeId}
+          onSelectNode={handleSelectNode}
+          expandedNodes={expandedNodes}
+          onToggleExpand={handleToggleExpand}
+          filterText={filterText}
+          onFilterChange={setFilterText}
+          onAddPriceOverride={(planId) => {
+            const plan = selectedPlans.find(p => p.plan.id === planId)
+            if (plan) {
+              const newOverride = smartPriceOverride(plan)
+              handleAddPriceOverride(planId, newOverride)
+              setSelectedNodeId(`plan-${planId}-override-${newOverride.id}`)
+            }
+          }}
+          onAddQuantityUpdate={(planId) => {
+            const plan = selectedPlans.find(p => p.plan.id === planId)
+            if (plan) {
+              const newUpdate = smartQuantityUpdate(plan)
+              handleAddQuantityUpdate(planId, newUpdate)
+              setSelectedNodeId(`plan-${planId}-qty-${newUpdate.id}`)
+            }
+          }}
+          onShowAddMenu={() => setShowPlanSelector(true)}
+          scheduleMenuPlanId={scheduleMenuPlanId}
+          setScheduleMenuPlanId={setScheduleMenuPlanId}
+          className="flex-1 min-w-0 border-r-0"
+        />
+      </div>
+    )
+
+    return (
+      <div className="fixed inset-0 z-50 flex flex-col bg-white">
+        {editorHeader}
+        <div className="flex-1 min-h-0 overflow-hidden">
+          {timeline}
+        </div>
+        {mobileBottomPanel}
+        {modals}
+        {persistentOverlay}
+      </div>
+    )
+  }
 
   // "L+Hdr" — console spans full height including the header row
   if (consolePosition === "l+hdr") {
