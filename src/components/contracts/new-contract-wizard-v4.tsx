@@ -1531,11 +1531,24 @@ function FormPanel({
         </div>
         <div className="flex-1 overflow-auto p-5">
 
-        {/* Price info */}
+        {/* Price + Quantity focus card */}
         <div className="mb-5">
-          <div className="text-[11px] font-medium text-[#A0A8B4] mb-0.5">Sticker price</div>
-          <div className="text-lg font-semibold text-[#353A44]">${selectedPlan.plan.defaultMonthlyPrice.toFixed(2)} USD</div>
-          <div className="text-xs text-[#6c7688] mt-0.5">{selectedPlan.plan.description}</div>
+          <div className="flex items-start gap-4 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-medium text-[#A0A8B4] mb-0.5">Sticker price</div>
+              <div className="text-lg font-semibold text-[#353A44]">${selectedPlan.plan.defaultMonthlyPrice.toFixed(2)} USD</div>
+            </div>
+            <div className="shrink-0 w-28">
+              <div className="text-[11px] font-medium text-[#A0A8B4] mb-0.5">Quantity</div>
+              <input
+                type="number"
+                value={selectedPlan.quantity}
+                onChange={e => onUpdatePlan(selectedPlan.plan.id, { quantity: parseInt(e.target.value) || 1 })}
+                className="w-full h-8 px-2.5 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+              />
+            </div>
+          </div>
+          <div className="text-xs text-[#6c7688] mb-2">{selectedPlan.plan.description}</div>
           <LineDiscountSummary
             plans={selectedPlans}
             planId={selectedPlan.plan.id}
@@ -1545,7 +1558,7 @@ function FormPanel({
         </div>
 
         {/* Duration */}
-        <div className="mb-4">
+        <div className="mb-5">
           <label className="block text-xs font-normal text-[#596171] mb-1.5">Servicing duration</label>
           <DurationFields
             start={selectedPlan.startDate}
@@ -1557,17 +1570,6 @@ function FormPanel({
           />
           {renderStartDatePrompt(selectedPlan.plan.id)}
           {renderEndDatePrompt(selectedPlan.plan.id)}
-        </div>
-
-        {/* Quantity */}
-        <div className="mb-5">
-          <label className="block text-xs font-normal text-[#596171] mb-1.5">Quantity</label>
-          <input
-            type="number"
-            value={selectedPlan.quantity}
-            onChange={e => onUpdatePlan(selectedPlan.plan.id, { quantity: parseInt(e.target.value) || 1 })}
-            className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
-          />
         </div>
 
         {/* Schedule updates card */}
@@ -1651,11 +1653,24 @@ function FormPanel({
         </div>
         <div className="flex-1 overflow-auto p-5">
 
-        {/* Price info */}
+        {/* Price + Quantity focus card */}
         <div className="mb-5">
-          <div className="text-[11px] font-medium text-[#A0A8B4] mb-0.5">Sticker price</div>
-          <div className="text-lg font-semibold text-[#353A44]">${selectedPlan.plan.defaultMonthlyPrice.toFixed(2)} USD</div>
-          <div className="text-xs text-[#6c7688] mt-0.5">{selectedPlan.plan.description}</div>
+          <div className="flex items-start gap-4 mb-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-medium text-[#A0A8B4] mb-0.5">Sticker price</div>
+              <div className="text-lg font-semibold text-[#353A44]">${selectedPlan.plan.defaultMonthlyPrice.toFixed(2)} USD</div>
+            </div>
+            <div className="shrink-0 w-28">
+              <div className="text-[11px] font-medium text-[#A0A8B4] mb-0.5">Quantity</div>
+              <input
+                type="number"
+                value={selectedPlan.quantity}
+                onChange={e => onUpdatePlan(selectedPlan.plan.id, { quantity: parseInt(e.target.value) || 1 })}
+                className="w-full h-8 px-2.5 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+              />
+            </div>
+          </div>
+          <div className="text-xs text-[#6c7688] mb-2">{selectedPlan.plan.description}</div>
           <LineDiscountSummary
             plans={selectedPlans}
             planId={selectedPlan.plan.id}
@@ -1665,7 +1680,7 @@ function FormPanel({
         </div>
 
         {/* Duration */}
-        <div className="mb-4">
+        <div className="mb-5">
           <label className="block text-xs font-normal text-[#596171] mb-1.5">Servicing duration</label>
           <DurationFields
             start={selectedPlan.startDate}
@@ -1677,17 +1692,6 @@ function FormPanel({
           />
           {renderStartDatePrompt(selectedPlan.plan.id)}
           {renderEndDatePrompt(selectedPlan.plan.id)}
-        </div>
-
-        {/* Quantity */}
-        <div className="mb-5">
-          <label className="block text-xs font-normal text-[#596171] mb-1.5">Quantity</label>
-          <input
-            type="number"
-            value={selectedPlan.quantity}
-            onChange={e => onUpdatePlan(selectedPlan.plan.id, { quantity: parseInt(e.target.value) || 1 })}
-            className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
-          />
         </div>
 
         {/* Pricing overrides */}
