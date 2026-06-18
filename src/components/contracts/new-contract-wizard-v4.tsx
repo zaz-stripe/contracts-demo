@@ -659,7 +659,7 @@ function TreeSidebar({
                 e.stopPropagation()
                 onToggleExpand(node.id)
               }}
-              className="w-4 h-4 flex items-center justify-center -ml-1 shrink-0 rounded hover:bg-[#e9eaee]"
+              className="w-4 h-4 flex items-center justify-center shrink-0 rounded hover:bg-[#e9eaee]"
             >
               {isExpanded ? (
                 <ChevronDown className="w-3 h-3 text-[#A0A8B4]" />
