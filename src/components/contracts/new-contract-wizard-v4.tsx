@@ -696,11 +696,8 @@ function ProductForm({
       </div>
       <div className="flex-1 overflow-auto p-5">
         {/* Name */}
-        <div className="mb-5">
-          <label className="block text-sm font-semibold text-[#353A44]">
-            Name <span className="font-normal text-[#6c7688]">(required)</span>
-          </label>
-          <p className="text-xs text-[#6c7688] mt-0.5 mb-1.5">Name of the product or service, visible to customers.</p>
+        <div className="mb-4">
+          <label className="block text-xs font-normal text-[#596171] mb-1.5">Name</label>
           <input
             type="text"
             value={plan.name}
@@ -710,9 +707,8 @@ function ProductForm({
         </div>
 
         {/* Description */}
-        <div className="mb-5">
-          <label className="block text-sm font-semibold text-[#353A44]">Description</label>
-          <p className="text-xs text-[#6c7688] mt-0.5 mb-1.5">Appears at checkout, on the customer portal, and in quotes.</p>
+        <div className="mb-4">
+          <label className="block text-xs font-normal text-[#596171] mb-1.5">Description</label>
           <textarea
             value={plan.description}
             onChange={e => onUpdatePlan(plan.id, { plan: { ...plan, description: e.target.value } })}
@@ -722,9 +718,8 @@ function ProductForm({
         </div>
 
         {/* Image */}
-        <div className="mb-5">
-          <label className="block text-sm font-semibold text-[#353A44]">Image</label>
-          <p className="text-xs text-[#6c7688] mt-0.5 mb-1.5">Appears at checkout. JPEG, PNG, or WEBP under 2MB.</p>
+        <div className="mb-4">
+          <label className="block text-xs font-normal text-[#596171] mb-1.5">Image</label>
           <input
             ref={fileRef}
             type="file"
@@ -743,11 +738,8 @@ function ProductForm({
         </div>
 
         {/* Product category */}
-        <div className="mb-5">
-          <label className="block text-sm font-semibold text-[#353A44]">Product category</label>
-          <p className="text-xs text-[#6c7688] mt-0.5 mb-1.5">
-            This will be used for calculating automatic tax. <span className="text-[#533AFD] font-medium cursor-pointer">View docs</span>
-          </p>
+        <div className="mb-4">
+          <label className="block text-xs font-normal text-[#596171] mb-1.5">Product category</label>
           <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-sm font-semibold text-[#353A44] transition-colors">
             Use preset: Website Hosting
             <Pencil className="w-3 h-3 text-[#A0A8B4]" />
