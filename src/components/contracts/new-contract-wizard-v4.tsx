@@ -3011,7 +3011,7 @@ function TimelineVisualization({
 
 
           {/* ===== Collections / invoices ===== */}
-          <div className="flex items-stretch border-b border-[#ebeef1] bg-white">
+          <div className="flex items-stretch bg-white">
             <div
               className="shrink-0 sticky left-0 z-10 flex items-center px-3 py-3 bg-white border-r border-[#ebeef1]"
               style={{ width: labelW }}
@@ -6859,7 +6859,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
 
   // Shared sub-trees extracted to avoid repeating them across layout modes.
   const editorHeader = (
-    <div className="flex items-center justify-between h-14 px-5 shrink-0">
+    <div className="flex items-center justify-between h-14 px-5 border-b border-[#ebeef1] shrink-0">
       <h1 className="text-sm font-semibold text-[#353A44]">Contract {contractId}</h1>
       <div className="flex items-center gap-2">
         {consolePosition === "off" && (
