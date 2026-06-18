@@ -536,7 +536,7 @@ function TreeSidebar({
       node.type === "price-override" || node.type === "quantity-update" || node.type === "add-schedule"
     // The contract root sits flush; everything below it gets a base offset so it
     // reads as a child of the contract, plus the usual per-level nesting.
-    const indent = depth * 12 + (isScheduledChange ? 8 : 0)
+    const indent = (depth === 0 ? 0 : 12 + (depth - 1) * 24) + (isScheduledChange ? 24 : 0)
 
     // Icon based on type. Price + scheduled updates share one size and color
     // so they read as siblings on the same level.
