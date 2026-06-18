@@ -105,6 +105,35 @@ async function demoReply(
     }
   }
 
+  // ── Template + customer + start date ──────────────────────────────────────
+  // Handles: "use this as a template for customer Helix starting Jan 1 2027"
+  const templateMatch = lower.match(/(?:use.*template|apply.*template|template.*for|use this for)\s+(?:customer\s+)?([a-z][a-z\s'-]+?)(?:\s+starting\s+(?:at\s+|on\s+)?(.+))?$/i)
+  if (templateMatch) {
+    const rawName = templateMatch[1].trim()
+    const rawDate = templateMatch[2]?.trim()
+    const displayName = rawName.replace(/\b\w/g, c => c.toUpperCase())
+    const commands: string[] = [`set customer to ${displayName}`]
+    // Add all catalog products from the current context if none exist yet
+    if (!ctx.plans.length) {
+      for (const p of ctx.catalog.slice(0, 3)) commands.push(`add ${p}`)
+    }
+    if (rawDate) {
+      const parsed = new Date(rawDate)
+      if (!isNaN(parsed.getTime())) {
+        const iso = parsed.toISOString().slice(0, 10)
+        commands.push(`shift contract start to ${iso}`)
+      }
+    }
+    const dateNote = rawDate ? ` starting ${rawDate}` : ""
+    const productNote = !ctx.plans.length
+      ? ` I've added the first few products from the catalog as a starting point — adjust as needed.`
+      : ` Keeping the existing ${ctx.plans.length} product${ctx.plans.length !== 1 ? "s" : ""} as-is.`
+    return {
+      reply: `Done — setting customer to ${displayName}${dateNote}.${productNote}`,
+      commands,
+    }
+  }
+
   // ── Set customer ───────────────────────────────────────────────────────────
   const setCustomerMatch = lower.match(/(?:set customer (?:to )?|customer is |this is for |contract for )([a-z][a-z\s'-]+?)(?:\s+(?:with )?(?:at )?email\s+(\S+@\S+))?(?:\s+in [a-z]+)?$/i)
   if (setCustomerMatch || (has(lower, "set customer", "customer is", "this is for") && !has(lower, "how", "what", "why"))) {
@@ -330,6 +359,7 @@ When you need to make changes to the contract, append a COMMANDS: section after 
   set currency to [USD|EUR|GBP|CAD|AUD]
   set [product name] to $[price]
   add a [N]% discount to [product name]
+  shift contract start to [YYYY-MM-DD]
 
 Rules:
 - Only include COMMANDS: when making changes, not for questions or explanations.

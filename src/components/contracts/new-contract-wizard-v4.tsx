@@ -495,7 +495,7 @@ function TreeSidebar({
       node.type === "price-override" || node.type === "quantity-update" || node.type === "add-schedule"
     // The contract root sits flush; everything below it gets a base offset so it
     // reads as a child of the contract, plus the usual per-level nesting.
-    const indent = (depth === 0 ? 0 : 20) + depth * 16 + (isScheduledChange ? 16 : 0)
+    const indent = depth * 12 + (isScheduledChange ? 8 : 0)
 
     // Icon based on type. Price + scheduled updates share one size and color
     // so they read as siblings on the same level.
@@ -641,8 +641,8 @@ function TreeSidebar({
   return (
     <div className="w-[260px] border-r border-[#ebeef1] flex flex-col bg-white">
       {/* Search */}
-      <div className="p-3 border-b border-[#ebeef1]">
-        <div className="relative">
+      <div className="h-12 flex items-center px-3 border-b border-[#ebeef1] shrink-0">
+        <div className="relative w-full">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#A0A8B4]" />
           <input
             type="text"
@@ -2398,7 +2398,7 @@ function TimelineVisualization({
   return (
     <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-[#ebeef1] bg-white shrink-0">
+      <div className="flex items-center justify-between px-4 h-12 border-b border-[#ebeef1] bg-white shrink-0">
         <span className="text-sm font-semibold text-[#353A44]">
           {viewMode === "timeline" ? "Timeline" : "Service agreement"}
         </span>
@@ -3376,28 +3376,23 @@ function PlanSelectorModal({
         </div>
 
         {/* Plan list */}
-        <div className="max-h-[250px] overflow-auto">
+        <div className="max-h-[280px] overflow-auto">
           {availablePlans.map(plan => (
-            <button
-              key={plan.id}
-              onClick={() => { onSelectPlan(plan); onClose() }}
-              className="w-full flex flex-col px-3 py-2 hover:bg-[#f5f6f8] border-b border-[#ebeef1] last:border-b-0 text-left transition-colors"
-            >
-              <div className="flex items-center gap-2 text-sm text-[#353A44]">
-                <Package className="w-3.5 h-3.5 text-[#475569]" />
-                <span className="font-medium">{plan.name}</span>
+            <div key={plan.id} className="border-b border-[#ebeef1] last:border-b-0">
+              {/* Product name — non-clickable label */}
+              <div className="flex items-center gap-2 px-3 pt-2.5 pb-1">
+                <Package className="w-3.5 h-3.5 text-[#A0A8B4] shrink-0" />
+                <span className="text-xs font-semibold text-[#596171]">{plan.name}</span>
               </div>
-              <div className="ml-5 space-y-0.5 mt-1">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#6c7688]">${(plan.defaultMonthlyPrice * 12).toFixed(2)} USD</span>
-                  <span className="text-[#A0A8B4]">per year</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-[#6c7688]">${plan.defaultMonthlyPrice.toFixed(2)} USD</span>
-                  <span className="text-[#A0A8B4]">Per month</span>
-                </div>
-              </div>
-            </button>
+              {/* Monthly price — the clickable item */}
+              <button
+                onClick={() => { onSelectPlan(plan); onClose() }}
+                className="w-full flex items-center justify-between px-3 py-1.5 pb-2.5 hover:bg-[#f5f6f8] transition-colors text-left pl-8"
+              >
+                <span className="text-sm text-[#353A44]">${plan.defaultMonthlyPrice.toFixed(2)} USD</span>
+                <span className="text-xs text-[#A0A8B4]">per month</span>
+              </button>
+            </div>
           ))}
           {availablePlans.length === 0 && (
             <div className="px-3 py-4 text-center text-xs text-[#A0A8B4]">
@@ -6109,15 +6104,18 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   }, [])
 
   const handleAddPlan = useCallback((plan: PlanTemplate) => {
-    setSelectedPlans(prev => [...prev, {
-      plan,
-      startDate: defaultStart,
-      endDate: defaultEnd,
-      quantity: 1,
-      priceOverrides: [],
-      quantityUpdates: [],
-      discounts: [],
-    }])
+    setSelectedPlans(prev => {
+      if (prev.some(p => p.plan.id === plan.id)) return prev
+      return [...prev, {
+        plan,
+        startDate: defaultStart,
+        endDate: defaultEnd,
+        quantity: 1,
+        priceOverrides: [],
+        quantityUpdates: [],
+        discounts: [],
+      }]
+    })
     // Focus the pricing line (not the product) so the user lands on the
     // servicing/quantity/pricing form rather than the product-detail form.
     setSelectedNodeId(`plan-${plan.id}-price`)
@@ -6226,6 +6224,27 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           appliedItemIds: [],
         }
         handleAddDiscount(entry.plan.id, discount)
+      }
+    }
+
+    // shift contract start to [YYYY-MM-DD] — shifts ALL plan dates by the delta
+    const shiftMatch = lower.match(/(?:shift|move|set|change).*start.*?(\d{4}-\d{2}-\d{2}|(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{1,2},?\s+\d{4})/i)
+    if (shiftMatch) {
+      const rawDate = shiftMatch[1]
+      const parsed = new Date(rawDate)
+      if (!isNaN(parsed.getTime())) {
+        const newStart = formatDateValue(parsed)
+        setSelectedPlans(prev => {
+          if (!prev.length) return prev
+          const oldStart = new Date(prev[0].startDate).getTime()
+          const deltaMs = parsed.getTime() - oldStart
+          return prev.map(p => ({
+            ...p,
+            startDate: formatDateValue(new Date(new Date(p.startDate).getTime() + deltaMs)),
+            endDate: formatDateValue(new Date(new Date(p.endDate).getTime() + deltaMs)),
+          }))
+        })
+        void newStart
       }
     }
   }, [selectedPlans, handleAddPlan, handleRemovePlan, handleAddPriceOverride, handleAddDiscount])
@@ -6444,7 +6463,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
         <FormPanel
           selectedNodeId={selectedNodeId}
           selectedPlans={selectedPlans}
-          hideScheduleModule={hasScheduled}
+          hideScheduleModule={hasScheduled || consolePosition === "inline"}
           contractId={contractId}
           customer={customer}
           currency={currency}
@@ -6651,7 +6670,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
         <FormPanel
           selectedNodeId={selectedNodeId}
           selectedPlans={selectedPlans}
-          hideScheduleModule={hasScheduled}
+          hideScheduleModule={hasScheduled || consolePosition === "inline"}
           contractId={contractId}
           customer={customer}
           currency={currency}
