@@ -3071,6 +3071,374 @@ function TimelineVisualization({
 }
 
 // =============================================================================
+// BILLING TIMELINE V2 — cashflow-anchored preview
+// Multi-lane: duration bar, monthly charge events, discount overlays
+// =============================================================================
+function BillingTimelineV2({
+  selectedPlans,
+  selectedNodeId,
+  onSelectNode,
+  currency,
+}: {
+  selectedPlans: SelectedPlanEntry[]
+  selectedNodeId: string
+  onSelectNode: (id: string) => void
+  currency: string
+}) {
+  type Zoom = "week" | "month" | "quarter" | "year"
+  const [zoom, setZoom] = useState<Zoom>("month")
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [tip, setTip] = useState<{ x: number; y: number; title: string; rows: { label: string; value: string; tone?: "pos" | "neg" }[] } | null>(null)
+
+  const today = useMemo(() => {
+    const d = new Date(); d.setHours(0, 0, 0, 0); return d
+  }, [])
+
+  const pxPerDay: number = zoom === "week" ? 38 : zoom === "month" ? 10 : zoom === "quarter" ? 3 : 1.3
+  const labelW = 188
+
+  // Derive visible date range from plan dates + padding
+  const { viewStart, viewEnd } = useMemo(() => {
+    const allDates = selectedPlans.flatMap(e => [new Date(e.startDate), new Date(e.endDate)]).filter(d => !isNaN(d.getTime()))
+    const rStart = allDates.length ? new Date(Math.min(...allDates.map(d => d.getTime()))) : addMonths(today, -1)
+    const rEnd = allDates.length ? new Date(Math.max(...allDates.map(d => d.getTime()))) : addMonths(today, 12)
+    return {
+      viewStart: new Date(Math.min(rStart.getTime() - 45 * 86400000, addMonths(today, -2).getTime())),
+      viewEnd: new Date(rEnd.getTime() + 45 * 86400000),
+    }
+  }, [selectedPlans, today])
+
+  const getX = (d: Date) => Math.max(0, (d.getTime() - viewStart.getTime()) / 86400000 * pxPerDay)
+  const totalWidth = (viewEnd.getTime() - viewStart.getTime()) / 86400000 * pxPerDay + 60
+  const todayX = getX(today)
+
+  // Scroll today to ~22% from left on mount / zoom change
+  useEffect(() => {
+    if (!scrollRef.current) return
+    scrollRef.current.scrollLeft = Math.max(0, todayX - scrollRef.current.clientWidth * 0.22)
+  }, [zoom, todayX])
+
+  // Month tick marks for the axis
+  const monthTicks = useMemo(() => {
+    const ticks: { date: Date; label: string; isJan: boolean }[] = []
+    const cur = new Date(viewStart.getFullYear(), viewStart.getMonth(), 1)
+    while (cur <= viewEnd) {
+      ticks.push({ date: new Date(cur), label: cur.toLocaleDateString("en-US", { month: "short" }), isJan: cur.getMonth() === 0 })
+      cur.setMonth(cur.getMonth() + 1)
+    }
+    return ticks
+  }, [viewStart, viewEnd])
+
+  // Generate monthly billing dates for a plan
+  function billingDates(entry: SelectedPlanEntry): Date[] {
+    const start = new Date(entry.startDate), end = new Date(entry.endDate)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return []
+    const dates: Date[] = []
+    const cur = new Date(start)
+    let guard = 72
+    while (cur <= end && guard-- > 0) { dates.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1) }
+    return dates
+  }
+
+  const fmtAmt = (n: number) => n >= 1000 ? `$${(n / 1000).toFixed(n % 1000 === 0 ? 0 : 1)}k` : `$${n % 1 === 0 ? n : n.toFixed(0)}`
+  const hideTip = () => setTip(null)
+  const showTip = (e: React.MouseEvent, title: string, rows: typeof tip extends null ? never : NonNullable<typeof tip>["rows"]) =>
+    setTip({ x: e.clientX, y: e.clientY, title, rows })
+
+  // Axis grid lines shared renderer
+  const GridLines = () => (
+    <>
+      {monthTicks.map((m, i) => (
+        <div key={i} className={cn("absolute top-0 bottom-0 border-l pointer-events-none", m.isJan ? "border-[#d6d9e0]" : "border-[#f0f1f4]")} style={{ left: getX(m.date) }} />
+      ))}
+      <div className="absolute top-0 bottom-0 w-[2px] bg-[#533AFD]/25 pointer-events-none" style={{ left: todayX }} />
+    </>
+  )
+
+  if (selectedPlans.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        <div className="flex items-center justify-between px-4 h-12 border-b border-[#ebeef1] shrink-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-[#353A44]">Cashflow preview</span>
+            <TodayChip today={today} />
+          </div>
+          <ZoomControls zoom={zoom} onChange={setZoom} />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-sm text-[#A0A8B4]">Add a pricing plan to see the cashflow</p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden bg-white">
+      {/* ── Header ── */}
+      <div className="flex items-center justify-between px-4 h-12 border-b border-[#ebeef1] shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-[#353A44]">Cashflow preview</span>
+          <TodayChip today={today} />
+        </div>
+        <ZoomControls zoom={zoom} onChange={setZoom} />
+      </div>
+
+      {/* ── Scrollable body ── */}
+      <div ref={scrollRef} className="flex-1 overflow-auto relative">
+        <div style={{ width: labelW + totalWidth, position: "relative" }}>
+
+          {/* Today line — spans full content height */}
+          <div className="absolute top-0 bottom-0 w-[2px] bg-[#533AFD]/20 pointer-events-none z-[5]" style={{ left: labelW + todayX }} />
+
+          {/* ── Sticky axis header ── */}
+          <div className="sticky top-0 z-20 flex bg-white border-b border-[#ebeef1]">
+            <div className="shrink-0 sticky left-0 z-10 bg-white border-r border-[#ebeef1]" style={{ width: labelW, height: 44 }} />
+            <div className="relative flex-1" style={{ height: 44 }}>
+              <GridLines />
+              {/* Today pin in axis */}
+              <div className="absolute top-0 bottom-0 w-[2px] bg-[#533AFD] pointer-events-none z-10" style={{ left: todayX }} />
+              {/* Month / year labels */}
+              {monthTicks.map((m, i) => (
+                <span
+                  key={i}
+                  className={cn("absolute bottom-2 text-[10px] tabular-nums -translate-x-1/2 select-none",
+                    m.isJan ? "text-[#353A44] font-semibold" : "text-[#A0A8B4]")}
+                  style={{ left: getX(m.date) }}
+                >
+                  {m.isJan ? String(m.date.getFullYear()) : m.label}
+                </span>
+              ))}
+              {/* Today label */}
+              <div className="absolute top-2 -translate-x-1/2 flex flex-col items-center pointer-events-none z-20" style={{ left: todayX }}>
+                <span className="text-[10px] font-bold text-[#533AFD] whitespace-nowrap">Today</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Plan groups ── */}
+          {selectedPlans.map((entry) => {
+            const planStart = new Date(entry.startDate)
+            const planEnd = new Date(entry.endDate)
+            const bDates = billingDates(entry)
+            const priceSelected = selectedNodeId === `plan-${entry.plan.id}-price`
+            const planSelected = selectedNodeId === `plan-${entry.plan.id}` || priceSelected
+            const barLeft = getX(planStart)
+            const barWidth = Math.max(6, getX(planEnd) - barLeft)
+
+            return (
+              <div key={entry.plan.id} className="border-b border-[#ebeef1]">
+
+                {/* ─ Plan header / duration bar row ─ */}
+                <div className="flex items-stretch">
+                  <button
+                    onClick={() => onSelectNode(`plan-${entry.plan.id}-price`)}
+                    className={cn("shrink-0 sticky left-0 z-10 flex items-center gap-2 px-3 border-r border-[#ebeef1] text-left transition-colors bg-white",
+                      planSelected ? "bg-[#f7f5ff]" : "hover:bg-[#f9fafb]")}
+                    style={{ width: labelW, height: 36 }}
+                  >
+                    <span className={cn("w-4 h-4 rounded flex items-center justify-center shrink-0 transition-colors",
+                      planSelected ? "bg-[#533AFD] text-white" : "bg-[#eef0f3] text-[#475569]")}>
+                      <Package className="w-2.5 h-2.5" />
+                    </span>
+                    <span className="text-xs font-semibold text-[#353A44] truncate">{entry.plan.name}</span>
+                  </button>
+                  <div className="relative flex-1" style={{ height: 36 }}>
+                    <GridLines />
+                    {/* Duration bar */}
+                    <button
+                      onClick={() => onSelectNode(`plan-${entry.plan.id}-price`)}
+                      onMouseEnter={e => showTip(e, entry.plan.name, [
+                        { label: "Start", value: formatDateShort(planStart) },
+                        { label: "End", value: formatDateShort(planEnd) },
+                        { label: "Duration", value: `${Math.round((planEnd.getTime() - planStart.getTime()) / (86400000 * 30))} months` },
+                      ])}
+                      onMouseMove={e => tip && showTip(e, tip.title, tip.rows)}
+                      onMouseLeave={hideTip}
+                      className={cn("absolute top-1/2 -translate-y-1/2 rounded-full h-2 transition-all hover:h-3",
+                        planSelected ? "bg-[#533AFD]" : "bg-[#c7cad3]")}
+                      style={{ left: barLeft, width: barWidth }}
+                    />
+                    {/* Start cap label */}
+                    <span className="absolute top-1/2 -translate-y-1/2 -translate-x-full pr-1.5 text-[9px] text-[#A0A8B4] tabular-nums whitespace-nowrap pointer-events-none" style={{ left: barLeft }}>
+                      {formatDateShort(planStart)}
+                    </span>
+                    {/* End cap label */}
+                    <span className="absolute top-1/2 -translate-y-1/2 translate-x-1.5 text-[9px] text-[#A0A8B4] tabular-nums whitespace-nowrap pointer-events-none" style={{ left: barLeft + barWidth }}>
+                      {formatDateShort(planEnd)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* ─ Charges lane ─ */}
+                <div className="flex items-stretch">
+                  <div className="shrink-0 sticky left-0 z-10 flex items-center gap-1.5 px-3 border-r border-[#ebeef1] bg-white" style={{ width: labelW, height: 52 }}>
+                    <Receipt className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                    <span className="text-[11px] text-[#6c7688]">Charges / mo</span>
+                  </div>
+                  <div className="relative flex-1" style={{ height: 52 }}>
+                    <GridLines />
+                    {bDates.map((date, i) => {
+                      const x = getX(date)
+                      const mrr = lineStateAt(entry, date).mrr
+                      const isPast = date < today
+                      const isFirst = i === 0
+                      const certainty = isFirst ? "confirmed" : "estimated"
+                      const nodeId = `plan-${entry.plan.id}-price`
+                      const isSel = selectedNodeId === nodeId
+                      // Only show amount if different from previous or first visible future charge
+                      const prevMrr = i > 0 ? lineStateAt(entry, bDates[i - 1]).mrr : -1
+                      const amtChanged = mrr !== prevMrr
+                      const showAmt = !isPast && (isFirst || amtChanged || i === bDates.findIndex(d => d >= today))
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => onSelectNode(nodeId)}
+                          onMouseEnter={e => showTip(e, certainty === "confirmed" ? "Confirmed charge" : "Estimated charge", [
+                            { label: "Date", value: date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
+                            { label: "Amount", value: fmtMoney(mrr, currency) },
+                            { label: "Certainty", value: certainty === "confirmed" ? "Confirmed" : "Estimated (monthly)" },
+                          ])}
+                          onMouseMove={e => tip && showTip(e, tip.title, tip.rows)}
+                          onMouseLeave={hideTip}
+                          className="absolute flex flex-col items-center gap-0.5 group"
+                          style={{ left: x, top: "50%", transform: "translate(-50%, -50%)" }}
+                        >
+                          {/* Diamond marker */}
+                          <div className={cn(
+                            "w-[10px] h-[10px] rotate-45 rounded-[2px] transition-all group-hover:scale-125",
+                            isPast
+                              ? "bg-[#e2e4e9]"
+                              : isSel
+                                ? "bg-[#353A44] shadow-md"
+                                : certainty === "confirmed"
+                                  ? "bg-[#533AFD] shadow-sm"
+                                  : "bg-[#533AFD]/40 border border-[#533AFD]/60",
+                          )} />
+                          {/* Amount label */}
+                          {showAmt && (
+                            <span className={cn("text-[9px] font-semibold tabular-nums whitespace-nowrap",
+                              isSel ? "text-[#353A44]" : isPast ? "text-[#c0c4cc]" : "text-[#533AFD]")}>
+                              {fmtAmt(mrr)}
+                            </span>
+                          )}
+                        </button>
+                      )
+                    })}
+                    {/* "···" continuation */}
+                    {bDates.length > 1 && (() => {
+                      const lastX = getX(bDates[bDates.length - 1])
+                      return <span className="absolute text-[11px] text-[#A0A8B4] pointer-events-none" style={{ left: lastX + 14, top: "50%", transform: "translateY(-60%)" }}>···</span>
+                    })()}
+                  </div>
+                </div>
+
+                {/* ─ Discount / markup lanes ─ */}
+                {entry.discounts.map(discount => {
+                  const dStart = new Date(discount.startDate)
+                  const dEnd = new Date(discount.endDate)
+                  if (isNaN(dStart.getTime()) || isNaN(dEnd.getTime())) return null
+                  const dnId = `discount-${entry.plan.id}-${discount.id}`
+                  const dSel = selectedNodeId === dnId
+                  const dLeft = getX(dStart)
+                  const dWidth = Math.max(6, getX(dEnd) - dLeft)
+                  const isMarkup = discount.type === "markup"
+                  return (
+                    <div key={discount.id} className="flex items-stretch">
+                      <button
+                        onClick={() => onSelectNode(dnId)}
+                        className="shrink-0 sticky left-0 z-10 flex items-center gap-1.5 px-3 border-r border-[#ebeef1] bg-white hover:bg-[#f9fafb] transition-colors text-left"
+                        style={{ width: labelW, height: 26 }}
+                      >
+                        <Percent className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                        <span className="text-[11px] text-[#6c7688] truncate">{isMarkup ? "+" : "−"}{discount.percentage}% {isMarkup ? "markup" : "discount"}</span>
+                      </button>
+                      <div className="relative flex-1" style={{ height: 26 }}>
+                        <GridLines />
+                        <button
+                          onClick={() => onSelectNode(dnId)}
+                          onMouseEnter={e => showTip(e, isMarkup ? "Markup" : "Discount", [
+                            { label: "Rate", value: `${discount.percentage}%` },
+                            { label: "Start", value: formatDateShort(dStart) },
+                            { label: "End", value: formatDateShort(dEnd) },
+                          ])}
+                          onMouseMove={e => tip && showTip(e, tip.title, tip.rows)}
+                          onMouseLeave={hideTip}
+                          className={cn(
+                            "absolute top-1/2 -translate-y-1/2 h-3 rounded-full transition-all hover:h-4",
+                            isMarkup
+                              ? dSel ? "bg-[#059669] ring-1 ring-[#059669]" : "bg-[#d1fae5]"
+                              : dSel ? "bg-[#f59e0b] ring-1 ring-[#f59e0b]" : "bg-[#fde68a]/80",
+                          )}
+                          style={{ left: dLeft, width: dWidth }}
+                        />
+                        {/* Rate label on the bar */}
+                        {dWidth > 40 && (
+                          <span className="absolute top-1/2 -translate-y-1/2 text-[9px] font-semibold pointer-events-none px-1 truncate"
+                            style={{ left: dLeft + 4, maxWidth: dWidth - 8, color: isMarkup ? "#059669" : "#b45309" }}>
+                            {discount.percentage}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ── Tooltip ── */}
+      {tip && (
+        <div className="fixed z-50 pointer-events-none rounded-lg bg-[#22263a] text-white shadow-xl px-3 py-2 text-xs"
+          style={{
+            left: Math.min(tip.x + 14, (typeof window !== "undefined" ? window.innerWidth : 9999) - 220),
+            top: tip.y + 14,
+            minWidth: 168,
+          }}>
+          <div className="font-semibold mb-1.5">{tip.title}</div>
+          {tip.rows.map((r, i) => (
+            <div key={i} className="flex justify-between gap-5">
+              <span className="text-white/50">{r.label}</span>
+              <span className={cn("font-medium tabular-nums", r.tone === "pos" && "text-emerald-400", r.tone === "neg" && "text-red-400")}>{r.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Small sub-components used by BillingTimelineV2
+function TodayChip({ today }: { today: Date }) {
+  return (
+    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#eef0ff] border border-[#533AFD]/20">
+      <span className="w-1.5 h-1.5 rounded-full bg-[#533AFD]" />
+      <span className="text-[10px] font-semibold text-[#533AFD] tabular-nums">
+        {today.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+      </span>
+    </div>
+  )
+}
+
+function ZoomControls({ zoom, onChange }: { zoom: "week" | "month" | "quarter" | "year"; onChange: (z: "week" | "month" | "quarter" | "year") => void }) {
+  const opts: { label: string; key: "week" | "month" | "quarter" | "year" }[] = [
+    { label: "W", key: "week" }, { label: "M", key: "month" }, { label: "Q", key: "quarter" }, { label: "Y", key: "year" },
+  ]
+  return (
+    <div className="flex items-center gap-0.5 bg-[#f5f6f8] rounded-md p-0.5">
+      {opts.map(o => (
+        <button key={o.key} onClick={() => onChange(o.key)}
+          className={cn("w-7 h-7 rounded text-[11px] font-semibold transition-colors",
+            zoom === o.key ? "bg-white text-[#353A44] shadow-sm" : "text-[#A0A8B4] hover:text-[#353A44]")}>
+          {o.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// =============================================================================
 // SCHEDULE MODAL COMPONENT
 // =============================================================================
 function ScheduleModal({
@@ -6096,6 +6464,8 @@ function ControlPanel({
   setConsoleHeight,
   consoleWidth,
   setConsoleWidth,
+  timelineView,
+  setTimelineView,
 }: {
   onClose: () => void
   consolePosition: ConsolePosition
@@ -6104,6 +6474,8 @@ function ControlPanel({
   setConsoleHeight: (h: number) => void
   consoleWidth: number
   setConsoleWidth: (w: number) => void
+  timelineView: "gantt" | "cashflow"
+  setTimelineView: (v: "gantt" | "cashflow") => void
 }) {
   return (
     <div className="fixed bottom-4 right-4 z-[200] w-[272px] bg-white rounded-[14px] border border-[#ebeef1] shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
@@ -6142,6 +6514,14 @@ function ControlPanel({
             onChange={v => setConsoleHeight(parseInt(v))}
           />
         )}
+
+        <SegmentedRow
+          label="Timeline"
+          options={["Gantt", "Cashflow"]}
+          value={timelineView === "gantt" ? "Gantt" : "Cashflow"}
+          onChange={v => setTimelineView(v === "Gantt" ? "gantt" : "cashflow")}
+          highlight
+        />
 
         <div className="flex justify-end pb-1">
           <button
@@ -6201,6 +6581,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const widthDragRef = useRef<{ x: number; width: number } | null>(null)
   const heightDragRef = useRef<{ y: number; height: number; containerH: number } | null>(null)
 
+  const [timelineView, setTimelineView] = useState<"gantt" | "cashflow">("gantt")
   const [isMobile, setIsMobile] = useState(false)
   const [mobileBottomView, setMobileBottomView] = useState<"tree" | "form">("tree")
   useEffect(() => {
@@ -6854,6 +7235,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           setConsoleHeight={setConsoleHeight}
           consoleWidth={consoleWidth}
           setConsoleWidth={setConsoleWidth}
+          timelineView={timelineView}
+          setTimelineView={setTimelineView}
         />
       )}
     </>
@@ -7031,7 +7414,14 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     </div>
   )
 
-  const timeline = (
+  const timeline = timelineView === "cashflow" ? (
+    <BillingTimelineV2
+      selectedPlans={resolvedPlans}
+      selectedNodeId={selectedNodeId}
+      onSelectNode={handleSelectNode}
+      currency={currency}
+    />
+  ) : (
     <TimelineVisualization
       selectedPlans={resolvedPlans}
       selectedNodeId={selectedNodeId}
