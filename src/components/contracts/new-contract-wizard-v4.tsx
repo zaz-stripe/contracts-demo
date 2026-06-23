@@ -2290,6 +2290,53 @@ function ServiceAgreementPdf({
   )
 }
 
+// Shared segment-building helpers used by both timeline variants
+type TlSeg = { start: Date; end: Date; value: number; id: string | null; active: boolean }
+
+function buildPriceSegments(
+  start: Date, end: Date, base: number,
+  windows: { start: Date; end: Date; value: number; id: string }[],
+): TlSeg[] {
+  const sMs = start.getTime(), eMs = end.getTime()
+  if (!(sMs < eMs)) return []
+  const bounds = new Set<number>([sMs, eMs])
+  windows.forEach(w => {
+    const ws = Math.max(w.start.getTime(), sMs), we = Math.min(w.end.getTime(), eMs)
+    if (ws < we) { bounds.add(ws); bounds.add(we) }
+  })
+  const pts = [...bounds].filter(t => t >= sMs && t <= eMs).sort((a, b) => a - b)
+  const segs: TlSeg[] = []
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1]
+    if (a >= b) continue
+    const mid = (a + b) / 2
+    const win = windows.find(w => w.start.getTime() <= mid && w.end.getTime() >= mid)
+    segs.push({ start: new Date(a), end: new Date(b), value: win ? win.value : base, id: win ? win.id : null, active: !!win })
+  }
+  return segs
+}
+
+function buildQtySegments(
+  start: Date, end: Date, base: number,
+  updates: { date: Date; qty: number; id: string }[],
+): TlSeg[] {
+  const sMs = start.getTime(), eMs = end.getTime()
+  if (!(sMs < eMs)) return []
+  const sorted = [...updates].filter(u => !isNaN(u.date.getTime())).sort((a, b) => a.date.getTime() - b.date.getTime())
+  const bounds = new Set<number>([sMs, eMs])
+  sorted.forEach(u => { const t = u.date.getTime(); if (t > sMs && t < eMs) bounds.add(t) })
+  const pts = [...bounds].sort((a, b) => a - b)
+  const segs: TlSeg[] = []
+  for (let i = 0; i < pts.length - 1; i++) {
+    const a = pts[i], b = pts[i + 1]
+    if (a >= b) continue
+    let qty = base, id: string | null = null, active = false
+    sorted.forEach(u => { if (u.date.getTime() <= a) { qty = u.qty; id = u.id; active = true } })
+    segs.push({ start: new Date(a), end: new Date(b), value: qty, id, active })
+  }
+  return segs
+}
+
 // =============================================================================
 // TIMELINE VISUALIZATION COMPONENT
 // =============================================================================
@@ -3331,6 +3378,99 @@ function BillingTimelineV2({
                     })()}
                   </div>
                 </div>
+
+                {/* ─ Price / month lane ─ */}
+                {(() => {
+                  const priceSegs = buildPriceSegments(
+                    planStart, planEnd,
+                    entry.plan.defaultMonthlyPrice,
+                    entry.priceOverrides.map(o => ({
+                      start: new Date(o.startDate), end: new Date(o.endDate),
+                      value: typeof o.price === "number" ? o.price : parseFloat(String(o.price).replace(/[^0-9.]/g, "")) || 0,
+                      id: o.id,
+                    })).filter(w => !isNaN(w.start.getTime()) && !isNaN(w.end.getTime())),
+                  )
+                  return (
+                    <div className="flex items-stretch">
+                      <div className="shrink-0 sticky left-0 z-10 flex items-center gap-1.5 px-3 border-r border-[#ebeef1] bg-white" style={{ width: labelW, height: 32 }}>
+                        <Tag className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                        <span className="text-[11px] text-[#6c7688]">Price / month</span>
+                      </div>
+                      <div className="relative flex-1" style={{ height: 32 }}>
+                        <GridLines />
+                        {priceSegs.map((seg, i) => {
+                          const left = getX(seg.start), width = Math.max(2, getX(seg.end) - left)
+                          const segSel = seg.id
+                            ? selectedNodeId === `plan-${entry.plan.id}-override-${seg.id}`
+                            : priceSelected
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => onSelectNode(seg.id ? `plan-${entry.plan.id}-override-${seg.id}` : `plan-${entry.plan.id}-price`)}
+                              onMouseEnter={e => showTip(e, seg.active ? "Price override" : "Base price", [
+                                { label: "Unit price", value: `$${seg.value.toFixed(seg.value % 1 === 0 ? 0 : 2)}/mo` },
+                                { label: "Period", value: `${formatDateShort(seg.start)} → ${formatDateShort(seg.end)}` },
+                              ])}
+                              onMouseMove={e => tip && showTip(e, tip.title, tip.rows)}
+                              onMouseLeave={hideTip}
+                              className={cn(
+                                "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-colors",
+                                segSel ? "bg-[#353A44] text-white" : seg.active ? "bg-[#ede9ff] text-[#533AFD]" : "bg-[#f0f1f4] text-[#6c7688]",
+                              )}
+                              style={{ left, width }}
+                            >
+                              ${seg.value.toFixed(seg.value % 1 === 0 ? 0 : 2)}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                {/* ─ Units lane ─ */}
+                {(() => {
+                  const qtySegs = buildQtySegments(
+                    planStart, planEnd, entry.quantity,
+                    entry.quantityUpdates.map(q => ({ date: new Date(q.effectiveDate), qty: q.quantity, id: q.id })),
+                  )
+                  return (
+                    <div className="flex items-stretch">
+                      <div className={cn("shrink-0 sticky left-0 z-10 flex items-center gap-1.5 px-3 border-r border-[#ebeef1] bg-white", priceSelected && "bg-[#f7f5ff]")} style={{ width: labelW, height: 32 }}>
+                        <Hash className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                        <span className="text-[11px] text-[#6c7688]">Units</span>
+                      </div>
+                      <div className="relative flex-1" style={{ height: 32 }}>
+                        <GridLines />
+                        {qtySegs.map((seg, i) => {
+                          const left = getX(seg.start), width = Math.max(2, getX(seg.end) - left)
+                          const segSel = seg.id
+                            ? selectedNodeId === `plan-${entry.plan.id}-qty-${seg.id}`
+                            : priceSelected
+                          return (
+                            <button
+                              key={i}
+                              onClick={() => onSelectNode(seg.id ? `plan-${entry.plan.id}-qty-${seg.id}` : `plan-${entry.plan.id}-price`)}
+                              onMouseEnter={e => showTip(e, seg.active ? "Quantity update" : "Base quantity", [
+                                { label: "Units", value: `${seg.value}` },
+                                { label: "Period", value: `${formatDateShort(seg.start)} → ${formatDateShort(seg.end)}` },
+                              ])}
+                              onMouseMove={e => tip && showTip(e, tip.title, tip.rows)}
+                              onMouseLeave={hideTip}
+                              className={cn(
+                                "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-colors",
+                                segSel ? "bg-[#353A44] text-white" : seg.active ? "bg-[#e8f4fb] text-[#0a7ea4]" : "bg-[#f0f1f4] text-[#6c7688]",
+                              )}
+                              style={{ left, width }}
+                            >
+                              {seg.value} units
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 {/* ─ Discount / markup lanes ─ */}
                 {entry.discounts.map(discount => {
@@ -6518,8 +6658,8 @@ function ControlPanel({
         <SegmentedRow
           label="Timeline"
           options={["Gantt", "Cashflow"]}
-          value={timelineView === "gantt" ? "Gantt" : "Cashflow"}
-          onChange={v => setTimelineView(v === "Gantt" ? "gantt" : "cashflow")}
+          value={timelineView}
+          onChange={v => setTimelineView(v as "gantt" | "cashflow")}
           highlight
         />
 
