@@ -3126,14 +3126,23 @@ function BillingTimelineV2({
   selectedNodeId,
   onSelectNode,
   currency,
+  contractId,
+  customer,
+  draftExpiry,
+  billingMethod = "auto",
 }: {
   selectedPlans: SelectedPlanEntry[]
   selectedNodeId: string
   onSelectNode: (id: string) => void
   currency: string
+  contractId: string
+  customer: { name: string; email: string } | null
+  draftExpiry: string
+  billingMethod?: "auto" | "manual"
 }) {
   type Zoom = "week" | "month" | "quarter" | "year"
   const [zoom, setZoom] = useState<Zoom>("month")
+  const [viewMode, setViewMode] = useState<"timeline" | "pdf">("timeline")
   const scrollRef = useRef<HTMLDivElement>(null)
   const [tip, setTip] = useState<{ x: number; y: number; title: string; rows: { label: string; value: string; tone?: "pos" | "neg" }[] } | null>(null)
 
@@ -3202,18 +3211,57 @@ function BillingTimelineV2({
     </>
   )
 
+  const v2Header = (
+    <div className="flex items-center justify-between px-4 h-12 border-b border-[#ebeef1] shrink-0">
+      <div className="flex items-center gap-2">
+        <span className="text-sm font-semibold text-[#353A44]">Cashflow preview</span>
+        {viewMode === "timeline" && <TodayChip today={today} />}
+      </div>
+      <div className="flex items-center gap-2">
+        {/* Preview / PDF toggle */}
+        <div className="flex bg-[#f0f1f3] rounded-[7px] p-[3px] gap-[2px]">
+          {(["timeline", "pdf"] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setViewMode(v)}
+              className={cn(
+                "text-[11px] font-medium rounded-[5px] px-2 py-1 transition-all",
+                viewMode === v ? "bg-white text-[#353A44] shadow-[0_1px_2px_rgba(0,0,0,0.12)]" : "text-[#6c7688] hover:text-[#353A44]",
+              )}
+            >
+              {v === "timeline" ? "Preview" : "PDF"}
+            </button>
+          ))}
+        </div>
+        {viewMode === "timeline" && <ZoomControls zoom={zoom} onChange={setZoom} />}
+      </div>
+    </div>
+  )
+
   if (selectedPlans.length === 0) {
     return (
       <div className="flex-1 flex flex-col overflow-hidden bg-white">
-        <div className="flex items-center justify-between px-4 h-12 border-b border-[#ebeef1] shrink-0">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-semibold text-[#353A44]">Cashflow preview</span>
-            <TodayChip today={today} />
-          </div>
-          <ZoomControls zoom={zoom} onChange={setZoom} />
-        </div>
+        {v2Header}
         <div className="flex-1 flex items-center justify-center">
           <p className="text-sm text-[#A0A8B4]">Add a pricing plan to see the cashflow</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (viewMode === "pdf") {
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden bg-white">
+        {v2Header}
+        <div className="flex-1 overflow-auto">
+          <ServiceAgreementPdf
+            contractId={contractId}
+            customer={customer}
+            currency={currency}
+            draftExpiry={draftExpiry}
+            selectedPlans={selectedPlans}
+            billingMethod={billingMethod}
+          />
         </div>
       </div>
     )
@@ -3222,13 +3270,7 @@ function BillingTimelineV2({
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-white">
       {/* ── Header ── */}
-      <div className="flex items-center justify-between px-4 h-12 border-b border-[#ebeef1] shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-[#353A44]">Cashflow preview</span>
-          <TodayChip today={today} />
-        </div>
-        <ZoomControls zoom={zoom} onChange={setZoom} />
-      </div>
+      {v2Header}
 
       {/* ── Scrollable body ── */}
       <div ref={scrollRef} className="flex-1 overflow-auto relative">
@@ -6655,13 +6697,23 @@ function ControlPanel({
           />
         )}
 
-        <SegmentedRow
-          label="Timeline"
-          options={["Gantt", "Cashflow"]}
-          value={timelineView}
-          onChange={v => setTimelineView(v as "gantt" | "cashflow")}
-          highlight
-        />
+        <div className="flex flex-col gap-1.5">
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#533AFD] text-white tracking-wide uppercase self-start">Timeline</span>
+          <div className="flex bg-[#f0f1f3] rounded-[7px] p-[3px] gap-[2px]">
+            {(["gantt", "cashflow"] as const).map(v => (
+              <button
+                key={v}
+                onClick={() => setTimelineView(v)}
+                className={cn(
+                  "flex-1 text-[11px] font-medium rounded-[5px] py-1 transition-all capitalize",
+                  timelineView === v ? "bg-white text-[#353A44] shadow-[0_1px_2px_rgba(0,0,0,0.12)]" : "text-[#6c7688] hover:text-[#353A44]",
+                )}
+              >
+                {v === "gantt" ? "Gantt" : "Cashflow"}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="flex justify-end pb-1">
           <button
@@ -7560,6 +7612,10 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       selectedNodeId={selectedNodeId}
       onSelectNode={handleSelectNode}
       currency={currency}
+      contractId={contractId}
+      customer={customer}
+      draftExpiry={draftExpiry}
+      billingMethod={billingMethod}
     />
   ) : (
     <TimelineVisualization
