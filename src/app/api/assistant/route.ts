@@ -2,10 +2,12 @@ export const runtime = "nodejs"
 
 import OpenAI from "openai"
 
-const client = new OpenAI({
-  baseURL: process.env.LITELLM_BASE_URL,
-  apiKey: process.env.LITELLM_API_KEY,
-})
+function getClient() {
+  return new OpenAI({
+    baseURL: process.env.LITELLM_BASE_URL,
+    apiKey: process.env.LITELLM_API_KEY,
+  })
+}
 
 interface AssistantContext {
   plans: { name: string; price: number; quantity: number; startDate: string; endDate: string; discounts: number[] }[]
@@ -173,6 +175,7 @@ async function callAssistant(
   }
 
   try {
+    const client = getClient()
     const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       { role: "system", content: buildSystemPrompt(ctx) },
     ]
