@@ -4,8 +4,8 @@ import OpenAI from "openai"
 
 function getClient() {
   return new OpenAI({
-    baseURL: process.env.LITELLM_BASE_URL,
-    apiKey: process.env.LITELLM_API_KEY,
+    baseURL: process.env.LITELLM_BASE_URL ?? "https://placeholder.invalid",
+    apiKey: process.env.LITELLM_API_KEY ?? "placeholder",
   })
 }
 
