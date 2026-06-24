@@ -3,8 +3,8 @@ import { I18nProvider } from '@/components/I18nProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Alloy',
-  description: 'Alloy prototype',
+  title: 'Contracts',
+  description: 'Contracts prototype',
 }
 
 export default function RootLayout({
