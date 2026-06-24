@@ -6590,6 +6590,299 @@ function ContractConsole({
 }
 
 // =============================================================================
+// AI MODE OVERLAYS — rendered on top of the editor when aiMode !== "chat"
+// =============================================================================
+type AiMode = "chat" | "ghosting" | "cmd-k" | "review" | "console"
+
+type AiContractState = {
+  contractId: string
+  customer: { name: string; email: string } | null
+  currency: string
+  plans: { name: string; monthlyPrice: number; quantity: number; startDate: string; endDate: string }[]
+}
+
+type AiAction =
+  | { type: "set_customer"; name: string; email: string }
+  | { type: "set_currency"; value: string }
+
+async function aiChat<T>(system: string, user: string, fallback: T): Promise<T> {
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gpt-4o", messages: [{ role: "system", content: system }, { role: "user", content: user }] }),
+    })
+    const data = await res.json()
+    return JSON.parse(data.content ?? "{}") as T
+  } catch { return fallback }
+}
+
+// V1 — Ghosting: floating suggestions panel anchored to the form area
+function AiGhostingOverlay({ state, onApply }: { state: AiContractState; onApply: (a: AiAction) => void }) {
+  const [suggestions, setSuggestions] = useState<{ field: string; label: string; value: string; action: AiAction }[]>([])
+  const [loading, setLoading] = useState(false)
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set())
+  const prevKey = useRef("")
+
+  useEffect(() => {
+    const key = JSON.stringify({ c: state.customer, curr: state.currency, plans: state.plans.length })
+    if (key === prevKey.current) return
+    prevKey.current = key
+    setLoading(true)
+    aiChat<{ suggestions: { field: string; label: string; value: string; customerName?: string; customerEmail?: string; currency?: string }[] }>(
+      `You are an AI assistant for a Stripe contract editor. Given the current contract state, suggest 1–3 quick improvements or completions for empty or improvable fields. Return JSON: {"suggestions": [{"field": "customer_name"|"customer_email"|"currency", "label": "short label", "value": "display value", "customerName"?: "...", "customerEmail"?: "...", "currency"?: "..."}]}`,
+      `Contract: ${JSON.stringify(state)}`,
+      { suggestions: [] }
+    ).then(r => {
+      setSuggestions((r.suggestions ?? []).map(s => ({
+        field: s.field, label: s.label, value: s.value,
+        action: s.field === "currency"
+          ? { type: "set_currency", value: s.currency ?? s.value }
+          : { type: "set_customer", name: s.customerName ?? state.customer?.name ?? "", email: s.customerEmail ?? state.customer?.email ?? "" },
+      })))
+      setDismissed(new Set())
+      setLoading(false)
+    })
+  }, [state.customer, state.currency, state.plans.length])
+
+  const visible = suggestions.filter(s => !dismissed.has(s.field))
+  if (!visible.length && !loading) return null
+
+  return (
+    <div className="fixed top-16 right-4 z-[190] flex flex-col gap-1.5 pointer-events-none">
+      {loading && (
+        <div className="flex items-center gap-2 bg-white border border-[#ebeef1] rounded-xl px-3 py-2 shadow-sm pointer-events-auto">
+          <Loader2 size={12} className="animate-spin text-[#9aa0ac]" />
+          <span className="text-[11px] text-[#9aa0ac]">Generating suggestions…</span>
+        </div>
+      )}
+      {visible.map(s => (
+        <div key={s.field} className="flex items-center gap-2 bg-white border border-[#ebeef1] rounded-xl pl-3 pr-2 py-2 shadow-sm pointer-events-auto">
+          <Sparkles size={11} className="text-[#533AFD] flex-shrink-0" />
+          <span className="text-[11px] text-[#6c7688] flex-shrink-0">{s.label}:</span>
+          <span className="text-[11px] font-medium text-[#353A44] truncate max-w-[140px]">{s.value}</span>
+          <button onClick={() => { onApply(s.action); setDismissed(p => new Set([...p, s.field])) }} className="ml-1 text-[10px] font-semibold text-[#533AFD] hover:text-[#4730e0] flex-shrink-0">Apply</button>
+          <button onClick={() => setDismissed(p => new Set([...p, s.field]))} className="text-[#d8dee4] hover:text-[#9aa0ac]"><X size={11} /></button>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// V2 — Command bar: ⌘K natural language overlay
+function AiCommandBarOverlay({ state, onApply }: { state: AiContractState; onApply: (a: AiAction) => void }) {
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState<string>()
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setOpen(o => !o) } }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [])
+  useEffect(() => { if (open) setTimeout(() => inputRef.current?.focus(), 50); else { setQuery(""); setResult(undefined) } }, [open])
+
+  async function submit(e?: React.FormEvent) {
+    e?.preventDefault()
+    if (!query.trim() || loading) return
+    setLoading(true)
+    const parsed = await aiChat<{ message: string; actions: AiAction[] }>(
+      `You are a Stripe contract editor assistant. Parse natural language instructions and return actions. Current state: ${JSON.stringify(state)}. Return JSON: {"message": "what you did", "actions": [{"type": "set_customer", "name": "...", "email": "..."} | {"type": "set_currency", "value": "..."}]}`,
+      query, { message: "Done.", actions: [] }
+    )
+    parsed.actions?.forEach(a => onApply(a))
+    setResult(parsed.message)
+    setQuery("")
+    setLoading(false)
+    setTimeout(() => { setOpen(false); setResult(undefined) }, 1600)
+  }
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        className="fixed top-[58px] right-4 z-[190] flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-[#ebeef1] rounded-full text-[11px] text-[#6c7688] hover:border-[#d8dee4] shadow-sm transition-colors"
+      >
+        <Sparkles size={11} className="text-[#533AFD]" />
+        Ask AI
+        <kbd className="text-[10px] bg-[#f5f6f8] border border-[#ebeef1] rounded px-1">⌘K</kbd>
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[300] flex items-start justify-center pt-[20vh]">
+          <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md border border-[#ebeef1] overflow-hidden mx-4">
+            <form onSubmit={submit}>
+              <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#f0f1f3]">
+                {loading ? <Loader2 size={15} className="text-[#533AFD] animate-spin flex-shrink-0" /> : <Sparkles size={15} className="text-[#533AFD] flex-shrink-0" />}
+                <input ref={inputRef} className="flex-1 text-sm outline-none placeholder-[#9aa0ac] bg-transparent" value={query} onChange={e => setQuery(e.target.value)} placeholder="Set customer to Acme Corp, billing@example.com…" disabled={loading} />
+                {query && !loading && <button type="submit" className="text-[#533AFD] hover:text-[#4730e0]"><ArrowRight size={15} /></button>}
+                <button type="button" onClick={() => setOpen(false)} className="text-[#d8dee4] hover:text-[#9aa0ac] ml-1"><X size={14} /></button>
+              </div>
+            </form>
+            {result && <div className="px-4 py-3 text-sm text-green-700 bg-green-50 flex items-center gap-2"><Check size={13} className="text-green-500 flex-shrink-0" />{result}</div>}
+            {!result && !loading && (
+              <div className="p-3">
+                <p className="text-[10px] font-semibold text-[#9aa0ac] uppercase tracking-wide px-1 mb-1.5">Try</p>
+                {["Set customer to Acme Corp, billing@example.com", "Change currency to EUR", "Set billing to manual"].map(s => (
+                  <button key={s} className="block w-full text-left text-sm text-[#353A44] hover:bg-[#f5f6f8] rounded-lg px-3 py-2 transition-colors" onClick={() => setQuery(s)}>{s}</button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// V4 — Guided review: bottom slide-up panel
+function AiReviewPanel({ state }: { state: AiContractState }) {
+  type Step = { id: string; field: string; severity: "ok" | "warning" | "info"; question: string; recommendation: string; actionLabel?: string }
+  const [phase, setPhase] = useState<"idle" | "loading" | "reviewing" | "done">("idle")
+  const [steps, setSteps] = useState<Step[]>([])
+  const [current, setCurrent] = useState(0)
+  const [accepted, setAccepted] = useState(0)
+  const [skipped, setSkipped] = useState(0)
+
+  async function start() {
+    setPhase("loading")
+    const r = await aiChat<{ steps: Step[] }>(
+      `You are a senior enterprise deal reviewer. Review the contract and return 3–5 review steps. Return JSON: {"steps": [{"id": "1", "field": "field name", "severity": "ok"|"warning"|"info", "question": "...", "recommendation": "...", "actionLabel": "optional button label"}]}`,
+      `Contract: ${JSON.stringify(state)}`, { steps: [] }
+    )
+    if (!r.steps?.length) { setPhase("idle"); return }
+    setSteps(r.steps); setCurrent(0); setAccepted(0); setSkipped(0); setPhase("reviewing")
+  }
+
+  function advance(accept: boolean) {
+    if (accept) setAccepted(n => n + 1); else setSkipped(n => n + 1)
+    if (current + 1 >= steps.length) setPhase("done"); else setCurrent(i => i + 1)
+  }
+
+  const step = steps[current]
+  const progress = steps.length ? ((accepted + skipped) / steps.length) * 100 : 0
+  const severityIcon = step?.severity === "ok" ? <Check size={14} className="text-green-500" /> : step?.severity === "warning" ? <AlertTriangle size={14} className="text-amber-500" /> : <Sparkles size={14} className="text-blue-500" />
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[190] border-t border-[#ebeef1] bg-white shadow-[0_-4px_16px_rgba(0,0,0,0.08)]">
+      {phase === "idle" && (
+        <div className="flex items-center justify-between px-6 py-3">
+          <div><p className="text-sm font-semibold text-[#353A44]">AI deal review</p><p className="text-[11px] text-[#9aa0ac]">Walk through your contract line by line</p></div>
+          <button onClick={start} className="flex items-center gap-1.5 bg-[#353A44] text-white text-[12px] font-semibold px-3.5 py-2 rounded-lg hover:bg-[#22262d] transition-colors"><Sparkles size={12} />Review deal</button>
+        </div>
+      )}
+      {phase === "loading" && (
+        <div className="flex items-center justify-center gap-2 px-6 py-4"><Loader2 size={14} className="animate-spin text-[#9aa0ac]" /><span className="text-sm text-[#9aa0ac]">Reviewing your deal…</span></div>
+      )}
+      {phase === "reviewing" && step && (
+        <div>
+          <div className="h-0.5 bg-[#f0f1f3]"><div className="h-full bg-[#533AFD] transition-all duration-500" style={{ width: `${progress}%` }} /></div>
+          <div className="flex items-start gap-3 px-6 py-3">
+            <div className="mt-0.5 flex-shrink-0">{severityIcon}</div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-semibold text-[#9aa0ac] uppercase tracking-wide mb-0.5">{step.field}</p>
+              <p className="text-sm font-semibold text-[#353A44]">{step.question}</p>
+              <p className="text-[12px] text-[#6c7688] mt-0.5">{step.recommendation}</p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button onClick={() => advance(false)} className="text-[11px] text-[#6c7688] hover:text-[#353A44] px-3 py-1.5 border border-[#ebeef1] rounded-lg bg-white">Skip</button>
+              <button onClick={() => advance(true)} className="text-[11px] text-white bg-[#353A44] hover:bg-[#22262d] px-3 py-1.5 rounded-lg font-medium">{step.actionLabel ?? "Got it"}</button>
+            </div>
+          </div>
+          <div className="flex gap-1 px-6 pb-3">{steps.map((s, i) => <div key={s.id} className={cn("h-1 flex-1 rounded-full transition-colors", i < accepted + skipped ? (i < accepted ? "bg-green-400" : "bg-[#ebeef1]") : i === current ? "bg-[#533AFD]" : "bg-[#f0f1f3]")} />)}</div>
+        </div>
+      )}
+      {phase === "done" && (
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="flex items-center gap-2"><Check size={15} className="text-green-500" /><div><p className="text-sm font-semibold text-[#353A44]">Review complete</p><p className="text-[11px] text-[#9aa0ac]">{accepted} applied · {skipped} skipped</p></div></div>
+          <button onClick={start} className="text-[11px] text-[#6c7688] hover:text-[#353A44] px-3 py-1.5 border border-[#ebeef1] rounded-lg">Re-review</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// V5 — Console: dark bottom JSON + prompt panel
+function AiConsoleOverlay({ state }: { state: AiContractState }) {
+  type Entry = { id: number; type: "prompt" | "response" | "error"; content: string; ts: string }
+  const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<"console" | "state">("console")
+  const [prompt, setPrompt] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [copied, setCopied] = useState(false)
+  const idRef = useRef(1)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  const H = 260
+
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: "smooth" }) }, [entries, open])
+
+  function ts() { const d = new Date(); return [d.getHours(), d.getMinutes(), d.getSeconds()].map(n => String(n).padStart(2, "0")).join(":") }
+  function push(type: Entry["type"], content: string) { setEntries(p => [...p, { id: idRef.current++, type, content, ts: ts() }]) }
+
+  async function run() {
+    if (!prompt.trim() || loading) return
+    const p = prompt; setPrompt(""); push("prompt", p); setLoading(true)
+    const r = await aiChat<{ response: string }>(
+      `You are a contract state console. Answer questions about this contract state. Return JSON: {"response": "..."}`,
+      `State: ${JSON.stringify(state)}\nQuestion: ${p}`, { response: "Error." }
+    )
+    push("response", r.response ?? "")
+    setLoading(false)
+  }
+
+  return (
+    <div className="fixed bottom-0 left-0 right-0 z-[190] bg-[#0d0f12] border-t border-[#1e2328] transition-all duration-200" style={{ height: open ? H : 36 }}>
+      <div className="flex items-center justify-between px-4 h-9 border-b border-[#1e2328] cursor-pointer select-none" onClick={() => setOpen(o => !o)}>
+        <div className="flex items-center gap-2">
+          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="0.5" y="0.5" width="10" height="10" rx="2" stroke="#4ade80" strokeOpacity="0.8"/><path d="M2.5 4h6M2.5 5.5h4M2.5 7h4.5" stroke="#4ade80" strokeOpacity="0.8" strokeWidth="1.1" strokeLinecap="round"/></svg>
+          <span className="text-[11px] font-mono text-[#4b5563]">contract.console</span>
+          {!open && <span className="text-[10px] font-mono text-[#374151] ml-2">{state.customer?.name || "unnamed"} · {state.plans.length} plan{state.plans.length !== 1 ? "s" : ""}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          {open && (
+            <>
+              {(["console", "state"] as const).map(t => (
+                <button key={t} onClick={e => { e.stopPropagation(); setTab(t) }} className={cn("text-[10px] px-2 py-0.5 rounded transition-colors", tab === t ? "bg-[#1e2328] text-[#e5e7eb]" : "text-[#4b5563] hover:text-[#9ca3af]")}>{t === "console" ? "Console" : "State"}</button>
+              ))}
+            </>
+          )}
+          <span className="text-[10px] text-[#374151]">{open ? "▾" : "▴"}</span>
+        </div>
+      </div>
+      {open && (
+        <div className="flex flex-col overflow-hidden" style={{ height: H - 36 }}>
+          {tab === "state" ? (
+            <div className="flex-1 overflow-auto p-3 relative">
+              <button onClick={() => { navigator.clipboard.writeText(JSON.stringify(state, null, 2)); setCopied(true); setTimeout(() => setCopied(false), 1500) }} className="absolute top-2 right-2 text-[10px] text-[#4b5563] hover:text-[#9ca3af] bg-[#1e2328] border border-[#374151] rounded px-2 py-1 flex items-center gap-1">{copied ? <Check size={9} className="text-green-400" /> : <svg width="9" height="9" viewBox="0 0 9 9" fill="none"><rect x="0.5" y="2.5" width="6" height="6" rx="1" stroke="currentColor"/><path d="M2.5 2.5V1.5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-1" stroke="currentColor"/></svg>}{copied ? "Copied" : "Copy"}</button>
+              <pre className="text-[11px] font-mono text-[#4ade80] leading-relaxed whitespace-pre-wrap">{JSON.stringify(state, null, 2)}</pre>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 overflow-auto p-3 space-y-1 font-mono text-[11px]">
+                {entries.length === 0 && <span className="text-[#374151]"><span className="text-[#4ade80]">$</span> Ready. Ask anything about this contract.</span>}
+                {entries.map(e => (
+                  <div key={e.id}><span className="text-[#374151] select-none">{e.ts} </span>{e.type === "prompt" ? <span className="text-blue-400">▶ {e.content}</span> : e.type === "error" ? <span className="text-red-400">{e.content}</span> : <span className="text-[#d1d5db] whitespace-pre-wrap">{e.content}</span>}</div>
+                ))}
+                {loading && <div className="flex items-center gap-2 text-[#4b5563]"><Loader2 size={10} className="animate-spin" />Processing…</div>}
+                <div ref={bottomRef} />
+              </div>
+              <div className="flex items-center gap-2 border-t border-[#1e2328] px-3 py-2">
+                <span className="text-[#4ade80] font-mono text-[11px] flex-shrink-0">$</span>
+                <input className="flex-1 bg-transparent text-[11px] font-mono text-[#e5e7eb] outline-none placeholder-[#374151]" value={prompt} onChange={e => setPrompt(e.target.value)} onKeyDown={e => { if (e.key === "Enter") run() }} placeholder="what's the total contract value…" disabled={loading} />
+                <button onClick={run} disabled={!prompt.trim() || loading} className="text-[#4b5563] hover:text-[#9ca3af] disabled:opacity-30"><Send size={11} /></button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// =============================================================================
 // CONTROL PANEL — Cmd+/ floating options panel
 // =============================================================================
 type ConsolePosition = "off" | "right" | "left" | "l+hdr" | "over" | "inline"
@@ -6648,6 +6941,8 @@ function ControlPanel({
   setConsoleWidth,
   timelineView,
   setTimelineView,
+  aiMode,
+  setAiMode,
 }: {
   onClose: () => void
   consolePosition: ConsolePosition
@@ -6658,6 +6953,8 @@ function ControlPanel({
   setConsoleWidth: (w: number) => void
   timelineView: "gantt" | "cashflow"
   setTimelineView: (v: "gantt" | "cashflow") => void
+  aiMode: AiMode
+  setAiMode: (m: AiMode) => void
 }) {
   return (
     <div className="fixed bottom-4 right-4 z-[200] w-[272px] bg-white rounded-[14px] border border-[#ebeef1] shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.06)] overflow-hidden">
@@ -6673,6 +6970,24 @@ function ControlPanel({
       </div>
 
       <div className="px-4 py-3 flex flex-col gap-3.5">
+        <div className="flex flex-col gap-1.5">
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-[#533AFD] text-white tracking-wide uppercase self-start">AI mode</span>
+          <div className="flex bg-[#f0f1f3] rounded-[7px] p-[3px] gap-[2px]">
+            {([["chat", "Chat"], ["ghosting", "Ghost"], ["cmd-k", "⌘K"], ["review", "Review"], ["console", "Console"]] as [AiMode, string][]).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setAiMode(id)}
+                className={cn(
+                  "flex-1 text-[11px] font-medium rounded-[5px] py-1 transition-all",
+                  aiMode === id ? "bg-white text-[#353A44] shadow-[0_1px_2px_rgba(0,0,0,0.12)]" : "text-[#6c7688] hover:text-[#353A44]",
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <SegmentedRow
           label="Console slide"
           options={["Off", "Right", "Left", "L+Hdr", "Over", "Inline"]}
@@ -6764,6 +7079,9 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const [documentName, setDocumentName] = useState<string | null>(null)
   // Once an update/override is scheduled this session, hide the "Schedule updates" module
   const [hasScheduled, setHasScheduled] = useState(false)
+
+  // AI mode
+  const [aiMode, setAiMode] = useState<AiMode>("chat")
 
   // Demo control panel (Cmd+/)
   const [consolePosition, setConsolePosition] = useState<ConsolePosition>("inline")
@@ -7429,6 +7747,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           setConsoleWidth={setConsoleWidth}
           timelineView={timelineView}
           setTimelineView={setTimelineView}
+          aiMode={aiMode}
+          setAiMode={setAiMode}
         />
       )}
     </>
@@ -7862,6 +8182,25 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     )
   }
 
+  // Shared contract state snapshot passed to AI mode overlays
+  const aiContractState: AiContractState = {
+    contractId,
+    customer,
+    currency,
+    plans: selectedPlans.map(e => ({
+      name: e.plan.name,
+      monthlyPrice: e.plan.defaultMonthlyPrice,
+      quantity: e.quantity,
+      startDate: e.startDate,
+      endDate: e.endDate,
+    })),
+  }
+
+  function handleAiApply(action: AiAction) {
+    if (action.type === "set_customer") setCustomer({ name: action.name, email: action.email })
+    else if (action.type === "set_currency") setCurrency(action.value)
+  }
+
   // "Left", "Right", "Over", and "Off"
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-white">
@@ -7872,6 +8211,10 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       </div>
       {modals}
       {persistentOverlay}
+      {aiMode === "ghosting" && <AiGhostingOverlay state={aiContractState} onApply={handleAiApply} />}
+      {aiMode === "cmd-k" && <AiCommandBarOverlay state={aiContractState} onApply={handleAiApply} />}
+      {aiMode === "review" && <AiReviewPanel state={aiContractState} />}
+      {aiMode === "console" && <AiConsoleOverlay state={aiContractState} />}
     </div>
   )
 }
