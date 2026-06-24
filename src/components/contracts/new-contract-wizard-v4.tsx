@@ -701,7 +701,18 @@ function TreeSidebar({
       
       {/* Tree */}
       <div className="flex-1 overflow-auto p-2">
-        {treeNodes.map(node => renderNode(node, node.type === "contract-root" ? 0 : 1))}
+        {treeNodes.map(node => {
+          if (node.type === "customer") {
+            return (
+              <Fragment key={node.id}>
+                {renderNode(node, 0)}
+                <hr className="my-1 mx-2 border-[#ebeef1]" />
+                <div className="px-2 pt-1 pb-0.5 text-[10px] font-semibold text-[#A0A8B4] uppercase tracking-wider">Pricing lines</div>
+              </Fragment>
+            )
+          }
+          return renderNode(node, node.type === "contract-root" ? 0 : 1)
+        })}
       </div>
     </div>
   )
