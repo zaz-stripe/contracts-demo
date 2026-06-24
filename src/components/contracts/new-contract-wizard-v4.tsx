@@ -706,8 +706,8 @@ function TreeSidebar({
             return (
               <Fragment key={node.id}>
                 {renderNode(node, 0)}
-                <hr className="my-1 mx-2 border-[#ebeef1]" />
-                <div className="px-2 pt-1 pb-0.5 text-[10px] font-semibold text-[#A0A8B4] uppercase tracking-wider">Pricing lines</div>
+                <hr className="my-2 mx-2 border-[#ebeef1]" />
+                <div className="px-2 pt-1 pb-1 text-[11px] font-semibold text-[#A0A8B4]">Pricing lines</div>
               </Fragment>
             )
           }
