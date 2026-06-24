@@ -47,6 +47,13 @@ export default function ContractsV1Page() {
                 <div className={`h-[16px] w-[16px] shrink-0 rounded-[4px] ${activeBillingView === "product-catalog" ? "bg-[#D8DEE4]" : "bg-[#F5F6F8]"}`} />
                 Product catalog
               </button>
+              <a
+                href="/ai-console-lab"
+                className="flex items-center gap-[10px] rounded-[6px] px-[8px] py-[6px] text-left text-[13px] leading-[16px] tracking-[-0.065px] transition-colors font-[500] text-[#353A44] hover:bg-[#F5F6F8]"
+              >
+                <div className="h-[16px] w-[16px] shrink-0 rounded-[4px] bg-[#F5F6F8] flex items-center justify-center text-[8px]">✦</div>
+                AI Console Lab
+              </a>
             </div>
             <div className="flex w-full flex-col gap-[2px]">
               <p className="mb-[8px] px-[8px] text-[11px] font-[500] uppercase tracking-[0.5px] text-[#6C7688]">Billing</p>
