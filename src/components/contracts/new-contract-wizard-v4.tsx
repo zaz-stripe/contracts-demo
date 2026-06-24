@@ -440,38 +440,30 @@ function TreeSidebar({
       planChildren.push({
         id: `${planNodeId}-price`,
         type: "price",
-        label: `$${entry.plan.defaultMonthlyPrice.toFixed(2)} USD per month`,
+        label: `$${entry.plan.defaultMonthlyPrice.toFixed(2)}/mo`,
         planId: entry.plan.id,
       })
-      
+
       // Price overrides
       entry.priceOverrides.forEach(override => {
         planChildren.push({
           id: `${planNodeId}-override-${override.id}`,
           type: "price-override",
-          label: `$${override.price} – ${formatDateShort(new Date(override.startDate))} → ${formatDateShort(new Date(override.endDate))}`,
+          label: `$${override.price}/mo`,
           planId: entry.plan.id,
           overrideId: override.id,
         })
       })
-      
+
       // Quantity updates
       entry.quantityUpdates.forEach(qu => {
         planChildren.push({
           id: `${planNodeId}-qty-${qu.id}`,
           type: "quantity-update",
-          label: `${qu.quantity} units – ${formatDateShort(new Date(qu.effectiveDate))}`,
+          label: `${qu.quantity} units`,
           planId: entry.plan.id,
           quantityUpdateId: qu.id,
         })
-      })
-      
-      // Schedule action
-      planChildren.push({
-        id: `${planNodeId}-add-schedule`,
-        type: "add-schedule",
-        label: "Schedule",
-        planId: entry.plan.id,
       })
       
       nodes.push({
