@@ -2642,7 +2642,7 @@ function TimelineVisualization({
         {months.map((m, i) => (
           <div
             key={i}
-            className={m.month === 0 ? "h-full border-r border-[#eeeff2]" : "h-full"}
+            className={m.month === 0 ? "h-full border-r border-[#c8cdd8]" : "h-full"}
             style={{ width: colWidth }}
           />
         ))}
@@ -2881,7 +2881,7 @@ function TimelineVisualization({
               return (
                 <div
                   key={entry.plan.id}
-                  className="border-b border-[#ebeef1] bg-white"
+                  className="border-b-2 border-[#e4e7ed] bg-white"
                 >
                   {/* Plan header row */}
                   <div className="flex items-stretch">
@@ -2949,7 +2949,7 @@ function TimelineVisualization({
                     >
                       <span className="text-xs text-[#9aa0ac]">Pricing</span>
                     </div>
-                    <div className="relative flex-1 bg-white" style={{ height: 48 }}>
+                    <div className="relative flex-1 bg-white" style={{ height: 40 }}>
                       <TrackGrid />
                       {priceSegs.map((seg, i) => {
                         const left = getPosition(seg.start)
@@ -2991,7 +2991,10 @@ function TimelineVisualization({
                             )}
                             style={{ left: left + 1, width: Math.max(width - 2, 8) }}
                           >
-                            <Calendar className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                            {seg.id
+                              ? <Calendar className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                              : <Tag className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                            }
                             ${seg.value.toFixed(seg.value % 1 === 0 ? 0 : 2)} USD per month
                           </button>
                         )
@@ -3008,7 +3011,7 @@ function TimelineVisualization({
                       >
                         <span className="text-xs text-[#9aa0ac]">Discounts & Markups</span>
                       </div>
-                      <div className="relative flex-1 bg-white" style={{ height: 36 }}>
+                      <div className="relative flex-1 bg-white" style={{ height: 40 }}>
                         <TrackGrid />
                         {entry.discounts.map(discount => {
                           const dStart = new Date(discount.startDate)
@@ -3030,16 +3033,16 @@ function TimelineVisualization({
                               onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
                               onMouseLeave={hideTip}
                               className={cn(
-                                "absolute top-1/2 -translate-y-1/2 h-[22px] rounded-full flex items-center gap-1 px-2.5 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border",
+                                "absolute top-2 bottom-2 flex items-center gap-1.5 px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border rounded-md",
                                 discountSelected
                                   ? isMarkup
                                     ? "bg-[#fef3c7] border-[#f59e0b] text-[#92400e]"
                                     : "bg-[#f0eeff] border-[#533AFD] text-[#3d2db0]"
                                   : isMarkup
                                     ? "bg-[#fffbeb] border-[#fde68a] text-[#a16207]"
-                                    : "bg-[#f0eeff] border-[#d4c9ff] text-[#533AFD]",
+                                    : "bg-white border-[#d4c9ff] text-[#533AFD]",
                               )}
-                              style={{ left: getPosition(dStart), width: getWidth(dStart, dEnd) }}
+                              style={{ left: getPosition(dStart) + 1, width: Math.max(getWidth(dStart, dEnd) - 2, 8) }}
                             >
                               <Percent className="w-2.5 h-2.5 shrink-0" />
                               {discount.percentage}% {isMarkup ? "markup" : "discount"}
@@ -3058,7 +3061,7 @@ function TimelineVisualization({
                     >
                       <span className="text-xs text-[#9aa0ac]">Quantity</span>
                     </div>
-                    <div className="relative flex-1 bg-white" style={{ height: 36 }}>
+                    <div className="relative flex-1 bg-white" style={{ height: 40 }}>
                       <TrackGrid />
                       {seatSegs.map((seg, i) => {
                         const left = getPosition(seg.start)
@@ -3093,12 +3096,12 @@ function TimelineVisualization({
                             onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
                             onMouseLeave={hideTip}
                             className={cn(
-                              "absolute top-1/2 -translate-y-1/2 h-[22px] rounded-full flex items-center gap-1 px-2.5 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border",
+                              "absolute top-2 bottom-2 flex items-center gap-1.5 px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border rounded-md",
                               segSelected
-                                ? "bg-[#f5f6f8] border-[#353A44] text-[#353A44]"
-                                : "bg-[#f5f6f8] border-[#e2e5eb] text-[#475569]",
+                                ? "bg-white border-[#353A44] text-[#353A44]"
+                                : "bg-white border-[#d4d8e0] text-[#475569] hover:border-[#a0a8b4]",
                             )}
-                            style={{ left, width }}
+                            style={{ left: left + 1, width: Math.max(width - 2, 8) }}
                           >
                             <Hash className="w-2.5 h-2.5 shrink-0 text-[#9aa0ac]" />
                             {seg.value} seats
