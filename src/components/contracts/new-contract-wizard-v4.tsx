@@ -2869,7 +2869,8 @@ function TimelineVisualization({
               const planWidth = getWidth(planStart, planEnd)
               const priceSelected = selectedNodeId === `plan-${entry.plan.id}-price`
               const planSelected =
-                selectedNodeId === `plan-${entry.plan.id}` || priceSelected
+                selectedNodeId === `plan-${entry.plan.id}` ||
+                selectedNodeId.startsWith(`plan-${entry.plan.id}-`)
               const basePrice = entry.plan.defaultMonthlyPrice
               const isExpanded = expandedPlans.has(entry.plan.id)
 
@@ -2939,7 +2940,7 @@ function TimelineVisualization({
                         className={cn(
                           "absolute top-1/2 -translate-y-1/2 h-7 rounded-md flex items-center px-3 text-xs font-medium text-white transition-all",
                           planSelected
-                            ? "bg-[#1a1a1a] ring-2 ring-[#533AFD] ring-offset-1"
+                            ? "bg-[#533AFD] hover:bg-[#4730E0]"
                             : "bg-[#1a1a1a] hover:bg-[#353A44]",
                         )}
                         style={{ left: planLeft, width: planWidth }}
@@ -3397,7 +3398,9 @@ function BillingTimelineV2({
             const planEnd = new Date(entry.endDate)
             const bDates = billingDates(entry)
             const priceSelected = selectedNodeId === `plan-${entry.plan.id}-price`
-            const planSelected = selectedNodeId === `plan-${entry.plan.id}` || priceSelected
+            const planSelected =
+              selectedNodeId === `plan-${entry.plan.id}` ||
+              selectedNodeId.startsWith(`plan-${entry.plan.id}-`)
             const barLeft = getX(planStart)
             const barWidth = Math.max(6, getX(planEnd) - barLeft)
 
