@@ -2943,22 +2943,18 @@ function TimelineVisualization({
                         {entry.plan.name}
                       </span>
                     </button>
-                    <div className="relative flex-1" style={{ height: 52 }}>
+                    <div className="relative flex-1" style={{ height: 36 }}>
                       <TrackGrid />
                       <button
                         onClick={() => onSelectNode(`plan-${entry.plan.id}-price`)}
                         className={cn(
-                          "absolute top-1/2 -translate-y-1/2 h-7 rounded-md flex items-center px-3 text-xs font-medium text-white transition-all",
+                          "absolute top-1/2 -translate-y-1/2 h-[6px] rounded-full transition-all",
                           planSelected
-                            ? "bg-[#533AFD] hover:bg-[#4730E0]"
-                            : "bg-[#1a1a1a] hover:bg-[#353A44]",
+                            ? "bg-[#3BABFD] hover:bg-[#2a9be0]"
+                            : "bg-[#D4DEE9] hover:bg-[#b8cad8]",
                         )}
                         style={{ left: planLeft, width: planWidth }}
-                      >
-                        <span className="truncate">
-                          ${basePrice.toFixed(basePrice % 1 === 0 ? 0 : 2)} USD per month
-                        </span>
-                      </button>
+                      />
                     </div>
                   </div>
 
