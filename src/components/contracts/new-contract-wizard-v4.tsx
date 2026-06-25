@@ -2475,10 +2475,10 @@ function TimelineVisualization({
   const changeMonths = new Map<string, { delta: number; totalAfter: number }>()
   const eventDates = new Set<string>()
   selectedPlans.forEach(entry => {
-    eventDates.add(entry.startDate)
-    entry.priceOverrides.forEach(o => { eventDates.add(o.startDate); eventDates.add(o.endDate) })
-    entry.quantityUpdates.forEach(q => eventDates.add(q.effectiveDate))
-    entry.discounts.forEach(d => { eventDates.add(d.startDate); eventDates.add(d.endDate) })
+    if (entry.startDate) eventDates.add(entry.startDate)
+    entry.priceOverrides?.forEach(o => { if (o.startDate) eventDates.add(o.startDate); if (o.endDate) eventDates.add(o.endDate) })
+    entry.quantityUpdates?.forEach(q => { if (q.effectiveDate) eventDates.add(q.effectiveDate) })
+    entry.discounts?.forEach(d => { if (d.startDate) eventDates.add(d.startDate); if (d.endDate) eventDates.add(d.endDate) })
   })
   Array.from(eventDates).forEach(dateStr => {
     const eventDate = new Date(dateStr)
@@ -2642,7 +2642,7 @@ function TimelineVisualization({
         {months.map((m, i) => (
           <div
             key={i}
-            className={m.month === 0 ? "h-full border-r border-[#c8cdd8]" : "h-full"}
+            className={m.month === 0 ? "h-full border-l border-[#c8cdd8]" : "h-full"}
             style={{ width: colWidth }}
           />
         ))}
@@ -2664,10 +2664,7 @@ function TimelineVisualization({
   return (
     <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 h-12 bg-white shrink-0">
-        <span className="text-sm font-semibold text-[#353A44]">
-          {viewMode === "timeline" ? "Timeline" : "Agreement PDF"}
-        </span>
+      <div className="flex items-center px-4 h-12 bg-white shrink-0">
         <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-[#f5f6f8] border border-[#ebeef1]">
           <button
             onClick={() => setViewMode("timeline")}
@@ -2722,10 +2719,13 @@ function TimelineVisualization({
                   className="shrink-0 sticky left-0 z-10 bg-white border-r border-[#ebeef1]"
                   style={{ width: labelW }}
                 />
-                {yearGroups.map(group => (
+                {yearGroups.map((group, gi) => (
                   <div
                     key={group.year}
-                    className="text-xs font-semibold text-[#353A44] px-2 py-2 border-r border-[#ebeef1] last:border-r-0"
+                    className={cn(
+                      "text-xs font-semibold text-[#353A44] px-2 py-2",
+                      gi > 0 && "border-l border-[#c8cdd8]",
+                    )}
                     style={{ width: group.months.length * colWidth }}
                   >
                     {group.year}
@@ -2743,7 +2743,9 @@ function TimelineVisualization({
                     key={i}
                     className={cn(
                       "text-[10px] text-center py-2",
-                      m.month === 0 ? "text-[#353A44] font-medium" : "text-[#A0A8B4]",
+                      m.month === 0
+                        ? "text-[#353A44] font-medium border-l border-[#c8cdd8]"
+                        : "text-[#A0A8B4]",
                     )}
                     style={{ width: colWidth }}
                   >
@@ -2881,7 +2883,7 @@ function TimelineVisualization({
               return (
                 <div
                   key={entry.plan.id}
-                  className="border-b-2 border-[#e4e7ed] bg-white"
+                  className="border-b border-[#d4d8e0] bg-white"
                 >
                   {/* Plan header row */}
                   <div className="flex items-stretch">
@@ -2942,7 +2944,7 @@ function TimelineVisualization({
                   {isExpanded && (
                     <>
                   {/* Pricing sub-row */}
-                  <div className="flex items-stretch border-t border-[#f5f6f8]">
+                  <div className="flex items-stretch">
                     <div
                       className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
                       style={{ width: labelW }}
@@ -3004,7 +3006,7 @@ function TimelineVisualization({
 
                   {/* Discounts & Markups sub-row */}
                   {entry.discounts.length > 0 && (
-                    <div className="flex items-stretch border-t border-[#f5f6f8]">
+                    <div className="flex items-stretch">
                       <div
                         className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
                         style={{ width: labelW }}
@@ -3054,7 +3056,7 @@ function TimelineVisualization({
                   )}
 
                   {/* Quantity sub-row */}
-                  <div className="flex items-stretch border-t border-[#f5f6f8]">
+                  <div className="flex items-stretch">
                     <div
                       className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
                       style={{ width: labelW }}
