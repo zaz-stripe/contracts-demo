@@ -2462,6 +2462,22 @@ function TimelineVisualization({
     : MIN_COL_WIDTH
   const timelineWidth = months.length * colWidth
 
+  // Compute months where the total billed MRR changes — used for smart invoice markers
+  const changeMonths = new Map<string, { delta: number; totalAfter: number }>()
+  months.forEach((m, i) => {
+    const d = new Date(m.year, m.month, 15)
+    const total = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, d).mrr, 0)
+    if (i === 0) {
+      if (total > 0.01) changeMonths.set(`${m.year}-${m.month}`, { delta: total, totalAfter: total })
+      return
+    }
+    const prev = months[i - 1]
+    const prevTotal = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, new Date(prev.year, prev.month, 15)).mrr, 0)
+    if (Math.abs(total - prevTotal) > 0.01) {
+      changeMonths.set(`${m.year}-${m.month}`, { delta: total - prevTotal, totalAfter: total })
+    }
+  })
+
   // Calculate horizontal position (px) for a date along the time axis
   const getPosition = (date: Date) => {
     const monthIdx = months.findIndex(
@@ -2705,11 +2721,9 @@ function TimelineVisualization({
               {/* Month row */}
               <div className="flex border-t border-[#f0f1f4]">
                 <div
-                  className="shrink-0 sticky left-0 z-10 bg-white border-r border-[#ebeef1] flex items-center px-3 py-2"
+                  className="shrink-0 sticky left-0 z-10 bg-white border-r border-[#ebeef1]"
                   style={{ width: labelW }}
-                >
-                  <span className="text-[10px] text-[#A0A8B4] font-semibold">Pricing lines</span>
-                </div>
+                />
                 {months.map((m, i) => (
                   <div
                     key={i}
@@ -2914,14 +2928,14 @@ function TimelineVisualization({
                   {isExpanded && (
                     <>
                   {/* Pricing sub-row */}
-                  <div className="flex items-stretch">
+                  <div className="flex items-stretch border-t border-[#f5f6f8]">
                     <div
-                      className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-inherit border-r border-[#ebeef1]"
+                      className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
                       style={{ width: labelW }}
                     >
-                      <span className="text-xs text-[#6c7688]">Pricing</span>
+                      <span className="text-xs text-[#9aa0ac]">Pricing</span>
                     </div>
-                    <div className="relative flex-1" style={{ height: 38 }}>
+                    <div className="relative flex-1 bg-white" style={{ height: 48 }}>
                       <TrackGrid />
                       {priceSegs.map((seg, i) => {
                         const left = getPosition(seg.start)
@@ -2941,8 +2955,8 @@ function TimelineVisualization({
                                 : onSelectNode(`plan-${entry.plan.id}-price`)
                             }
                             onMouseEnter={(e) =>
-                              showTip(e, seg.active ? "Scheduled price override" : "Base price", [
-                                { label: "Unit price", value: `$${seg.value.toFixed(2)}/mo` },
+                              showTip(e, seg.active ? "Price override" : "Base price", [
+                                { label: "Price", value: `$${seg.value.toFixed(2)}/mo` },
                                 { label: "Period", value: `${formatDateShort(seg.start)} → ${formatDateShort(seg.end)}` },
                                 ...(seg.id
                                   ? [{
@@ -2956,16 +2970,15 @@ function TimelineVisualization({
                             onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
                             onMouseLeave={hideTip}
                             className={cn(
-                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-colors",
+                              "absolute top-2 bottom-2 flex items-center gap-1.5 px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap rounded-md border transition-all",
                               segSelected
-                                ? "bg-[#353A44] text-white"
-                                : seg.active
-                                  ? "bg-[#ede9ff] text-[#353A44]"
-                                  : "bg-[#f0f1f4] text-[#6c7688]",
+                                ? "bg-[#f0eeff] border-[#533AFD] text-[#353A44]"
+                                : "bg-white border-[#d4d8e0] text-[#353A44] hover:border-[#a0a8b4]",
                             )}
-                            style={{ left, width }}
+                            style={{ left: left + 1, width: Math.max(width - 2, 8) }}
                           >
-                            ${seg.value.toFixed(seg.value % 1 === 0 ? 0 : 2)}
+                            <Calendar className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                            ${seg.value.toFixed(seg.value % 1 === 0 ? 0 : 2)} USD per month
                           </button>
                         )
                       })}
@@ -2974,14 +2987,14 @@ function TimelineVisualization({
 
                   {/* Discounts & Markups sub-row */}
                   {entry.discounts.length > 0 && (
-                    <div className="flex items-stretch">
+                    <div className="flex items-stretch border-t border-[#f5f6f8]">
                       <div
-                        className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-inherit border-r border-[#ebeef1]"
+                        className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
                         style={{ width: labelW }}
                       >
-                        <span className="text-xs text-[#6c7688]">Discounts & Markups</span>
+                        <span className="text-xs text-[#9aa0ac]">Discounts & Markups</span>
                       </div>
-                      <div className="relative flex-1" style={{ height: 30 }}>
+                      <div className="relative flex-1 bg-white" style={{ height: 36 }}>
                         <TrackGrid />
                         {entry.discounts.map(discount => {
                           const dStart = new Date(discount.startDate)
@@ -2989,12 +3002,13 @@ function TimelineVisualization({
                           const discountNodeId = `discount-${entry.plan.id}-${discount.id}`
                           const discountSelected =
                             selectedNodeId === discountNodeId || discount.id === selectedDiscountId
+                          const isMarkup = discount.type === "markup"
                           return (
                             <button
                               key={discount.id}
                               onClick={() => onSelectNode(discountNodeId)}
                               onMouseEnter={(e) =>
-                                showTip(e, discount.type === "markup" ? "Markup" : "Discount", [
+                                showTip(e, isMarkup ? "Markup" : "Discount", [
                                   { label: "Rate", value: `${discount.percentage}%` },
                                   { label: "Period", value: `${formatDateShort(dStart)} → ${formatDateShort(dEnd)}` },
                                 ])
@@ -3002,14 +3016,19 @@ function TimelineVisualization({
                               onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
                               onMouseLeave={hideTip}
                               className={cn(
-                                "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all",
+                                "absolute top-1/2 -translate-y-1/2 h-[22px] rounded-full flex items-center gap-1 px-2.5 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border",
                                 discountSelected
-                                  ? "bg-[#ffe0b3] text-[#a85b00] ring-1 ring-[#a85b00]"
-                                  : "bg-[#fff4e6] text-[#a85b00]",
+                                  ? isMarkup
+                                    ? "bg-[#fef3c7] border-[#f59e0b] text-[#92400e]"
+                                    : "bg-[#f0eeff] border-[#533AFD] text-[#3d2db0]"
+                                  : isMarkup
+                                    ? "bg-[#fffbeb] border-[#fde68a] text-[#a16207]"
+                                    : "bg-[#f0eeff] border-[#d4c9ff] text-[#533AFD]",
                               )}
                               style={{ left: getPosition(dStart), width: getWidth(dStart, dEnd) }}
                             >
-                              {discount.percentage}%{discount.type === "markup" ? " markup" : " off"}
+                              <Percent className="w-2.5 h-2.5 shrink-0" />
+                              {discount.percentage}% {isMarkup ? "markup" : "discount"}
                             </button>
                           )
                         })}
@@ -3018,18 +3037,14 @@ function TimelineVisualization({
                   )}
 
                   {/* Quantity sub-row */}
-                  <div className="flex items-stretch">
+                  <div className="flex items-stretch border-t border-[#f5f6f8]">
                     <div
-                      className={cn(
-                        "shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 border-r border-[#ebeef1]",
-                        priceSelected ? "bg-[#f7f5fd]" : "bg-inherit",
-                      )}
+                      className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
                       style={{ width: labelW }}
                     >
-                      <Hash className="w-3 h-3 text-[#A0A8B4] shrink-0" />
-                      <span className="text-xs text-[#6c7688]">Quantity</span>
+                      <span className="text-xs text-[#9aa0ac]">Quantity</span>
                     </div>
-                    <div className="relative flex-1" style={{ height: 38 }}>
+                    <div className="relative flex-1 bg-white" style={{ height: 36 }}>
                       <TrackGrid />
                       {seatSegs.map((seg, i) => {
                         const left = getPosition(seg.start)
@@ -3064,16 +3079,15 @@ function TimelineVisualization({
                             onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
                             onMouseLeave={hideTip}
                             className={cn(
-                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-colors",
+                              "absolute top-1/2 -translate-y-1/2 h-[22px] rounded-full flex items-center gap-1 px-2.5 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border",
                               segSelected
-                                ? "bg-[#353A44] text-white"
-                                : seg.active
-                                  ? "bg-[#e8f4fb] text-[#0a7ea4]"
-                                  : "bg-[#f0f1f4] text-[#6c7688]",
+                                ? "bg-[#f5f6f8] border-[#353A44] text-[#353A44]"
+                                : "bg-[#f5f6f8] border-[#e2e5eb] text-[#475569]",
                             )}
                             style={{ left, width }}
                           >
-                            {seg.value} units
+                            <Hash className="w-2.5 h-2.5 shrink-0 text-[#9aa0ac]" />
+                            {seg.value} seats
                           </button>
                         )
                       })}
@@ -3081,67 +3095,48 @@ function TimelineVisualization({
                   </div>
                     </>
                   )}{/* end isExpanded */}
-                  {/* (old per-discount rows removed — now merged into Discounts & Markups sub-row above) */}
-                  {false && entry.discounts.map(discount => {
-                    const dStart = new Date(discount.startDate)
-                    const dEnd = new Date(discount.endDate)
-                    const discountNodeId = `discount-${entry.plan.id}-${discount.id}`
-                    const discountSelected =
-                      selectedNodeId === discountNodeId || discount.id === selectedDiscountId
-                    return (
-                      <div key={discount.id} className="flex items-stretch">
-                        <button
-                          onClick={() => onSelectNode(discountNodeId)}
-                          className="shrink-0 sticky left-0 z-10 flex items-center gap-2 pl-10 pr-3 py-2 bg-inherit border-r border-[#ebeef1] text-left hover:bg-[#f5f6f8] transition-colors"
-                          style={{ width: labelW }}
-                        >
-                          <Percent className="w-3 h-3 text-[#A0A8B4] shrink-0" />
-                          <span className="text-xs text-[#6c7688] truncate">Discount</span>
-                        </button>
-                        <div className="relative flex-1" style={{ height: 30 }}>
-                          <TrackGrid />
-                          <button
-                            onClick={() => onSelectNode(discountNodeId)}
-                            className={cn(
-                              "absolute top-1/2 -translate-y-1/2 h-5 rounded flex items-center px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all",
-                              discountSelected
-                                ? "bg-[#ffe0b3] text-[#a85b00] ring-1 ring-[#a85b00]"
-                                : "bg-[#fff4e6] text-[#a85b00]",
-                            )}
-                            style={{ left: getPosition(dStart), width: getWidth(dStart, dEnd) }}
-                          >
-                            {discount.percentage}% off
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
                 </div>
               )
             })}
 
-
-          {/* ===== Collections / invoices ===== */}
-          <div className="flex items-stretch bg-white">
+          {/* ===== Invoices — sticky bottom, shown only at billing-change months ===== */}
+          <div className="sticky bottom-0 z-20 flex items-stretch bg-white border-t border-[#ebeef1]">
             <div
               className="shrink-0 sticky left-0 z-10 flex items-center px-3 py-3 bg-white border-r border-[#ebeef1]"
               style={{ width: labelW }}
             >
-              <span className="text-[10px] text-[#A0A8B4] font-semibold">Invoices</span>
+              <span className="text-[11px] font-medium text-[#353A44]">Invoices</span>
             </div>
-            <div className="relative flex-1 py-3" style={{ minHeight: 72 }}>
+            <div className="relative flex-1" style={{ height: 64 }}>
               <TrackGrid />
-              {months.map((m, i) => (
-                <button
-                  key={i}
-                  onClick={() => onShowInvoicePreview(m.date)}
-                  className="absolute top-1/2 -translate-y-1/2 w-9 h-12 rounded bg-[#f5f6f8] hover:bg-[#eceaff] transition-all flex flex-col items-center justify-center gap-1"
-                  style={{ left: i * colWidth + (colWidth - 36) / 2 }}
-                >
-                  <FileText className="w-3 h-3 text-[#A0A8B4]" />
-                  <span className="text-[8px] text-[#A0A8B4]">{m.label}</span>
-                </button>
-              ))}
+              {months.map((m, i) => {
+                const key = `${m.year}-${m.month}`
+                const change = changeMonths.get(key)
+                if (!change) return null
+                return (
+                  <button
+                    key={i}
+                    onClick={() => onShowInvoicePreview(m.date)}
+                    onMouseEnter={(e) =>
+                      showTip(e, `${m.label} ${m.year} invoice`, [
+                        {
+                          label: "Change",
+                          value: `${change.delta >= 0 ? "+" : "−"}${fmtMoney(Math.abs(change.delta), currency)}/mo`,
+                          tone: change.delta >= 0 ? "pos" : "neg",
+                        },
+                        { label: "New total", value: `${fmtMoney(change.totalAfter, currency)}/mo` },
+                      ])
+                    }
+                    onMouseMove={(e) => tip && showTip(e, tip.title, tip.rows)}
+                    onMouseLeave={hideTip}
+                    className="absolute top-1/2 -translate-y-1/2 w-9 h-11 rounded-lg bg-white border border-[#ebeef1] hover:border-[#533AFD] hover:bg-[#f8f7ff] transition-all flex flex-col items-center justify-center gap-0.5 shadow-sm"
+                    style={{ left: i * colWidth + (colWidth - 36) / 2 }}
+                  >
+                    <FileText className="w-3.5 h-3.5 text-[#6c7688]" />
+                    <span className="text-[8px] font-medium text-[#9aa0ac]">{m.label}</span>
+                  </button>
+                )
+              })}
             </div>
           </div>
           </div>
