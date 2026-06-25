@@ -2862,15 +2862,25 @@ function TimelineVisualization({
             </div>
 
             {/* ===== Plan rows ===== */}
-            {selectedPlans.map((entry) => {
+            {(() => {
+              // Longest-prefix match so "enterprise" prefix doesn't fire on "enterprise-seats" nodes
+              let _selPlanId: string | null = null
+              let _bestLen = 0
+              for (const e of selectedPlans) {
+                if (selectedNodeId === `plan-${e.plan.id}`) { _selPlanId = e.plan.id; break }
+                const px = `plan-${e.plan.id}-`
+                if (selectedNodeId.startsWith(px) && px.length > _bestLen) {
+                  _selPlanId = e.plan.id; _bestLen = px.length
+                }
+              }
+              const selectedPlanId = _selPlanId
+              return selectedPlans.map((entry) => {
               const planStart = new Date(entry.startDate)
               const planEnd = new Date(entry.endDate)
               const planLeft = getPosition(planStart)
               const planWidth = getWidth(planStart, planEnd)
               const priceSelected = selectedNodeId === `plan-${entry.plan.id}-price`
-              const planSelected =
-                selectedNodeId === `plan-${entry.plan.id}` ||
-                selectedNodeId.startsWith(`plan-${entry.plan.id}-`)
+              const planSelected = selectedPlanId === entry.plan.id
               const basePrice = entry.plan.defaultMonthlyPrice
               const isExpanded = expandedPlans.has(entry.plan.id)
 
@@ -3128,7 +3138,7 @@ function TimelineVisualization({
                   )}{/* end isExpanded */}
                 </div>
               )
-            })}
+            })})()}
 
           {/* ===== Invoices — sticky bottom, shown only at billing-change months ===== */}
           <div className="sticky bottom-0 z-20 flex items-stretch bg-white border-t-[0.5px] border-[#ebeef1]">
@@ -3393,14 +3403,23 @@ function BillingTimelineV2({
           </div>
 
           {/* ── Plan groups ── */}
-          {selectedPlans.map((entry) => {
+          {(() => {
+            let _selPlanId2: string | null = null
+            let _bestLen2 = 0
+            for (const e of selectedPlans) {
+              if (selectedNodeId === `plan-${e.plan.id}`) { _selPlanId2 = e.plan.id; break }
+              const px = `plan-${e.plan.id}-`
+              if (selectedNodeId.startsWith(px) && px.length > _bestLen2) {
+                _selPlanId2 = e.plan.id; _bestLen2 = px.length
+              }
+            }
+            const selectedPlanId2 = _selPlanId2
+            return selectedPlans.map((entry) => {
             const planStart = new Date(entry.startDate)
             const planEnd = new Date(entry.endDate)
             const bDates = billingDates(entry)
             const priceSelected = selectedNodeId === `plan-${entry.plan.id}-price`
-            const planSelected =
-              selectedNodeId === `plan-${entry.plan.id}` ||
-              selectedNodeId.startsWith(`plan-${entry.plan.id}-`)
+            const planSelected = selectedPlanId2 === entry.plan.id
             const barLeft = getX(planStart)
             const barWidth = Math.max(6, getX(planEnd) - barLeft)
 
@@ -3656,7 +3675,7 @@ function BillingTimelineV2({
                 })}
               </div>
             )
-          })}
+          })})()}
         </div>
       </div>
 
