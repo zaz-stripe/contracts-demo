@@ -2480,14 +2480,23 @@ function TimelineVisualization({
     entry.quantityUpdates?.forEach(q => { if (q.effectiveDate) eventDates.add(q.effectiveDate) })
     entry.discounts?.forEach(d => { if (d.startDate) eventDates.add(d.startDate); if (d.endDate) eventDates.add(d.endDate) })
   })
+  // lineStateAt doesn't check plan active status — wrap it to return 0 outside the plan window
+  const activeMrr = (entry: SelectedPlanEntry, date: Date): number => {
+    const t = date.getTime()
+    const s = new Date(entry.startDate).getTime()
+    const e = new Date(entry.endDate).getTime()
+    if (isNaN(s) || isNaN(e) || t < s || t > e) return 0
+    return lineStateAt(entry, date).mrr
+  }
+
   Array.from(eventDates).forEach(dateStr => {
     // Parse as local noon to avoid UTC→local date shift (e.g. "2026-06-01" UTC = May 31 in US timezones)
     const eventDate = new Date(dateStr.length >= 10 ? dateStr.slice(0, 10) + "T12:00:00" : dateStr)
     if (isNaN(eventDate.getTime())) return
     const monthKey = `${eventDate.getFullYear()}-${eventDate.getMonth()}`
     const dayBefore = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate() - 1, 12)
-    const totalBefore = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, dayBefore).mrr, 0)
-    const totalAfter = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, eventDate).mrr, 0)
+    const totalBefore = selectedPlans.reduce((sum, p) => sum + activeMrr(p, dayBefore), 0)
+    const totalAfter = selectedPlans.reduce((sum, p) => sum + activeMrr(p, eventDate), 0)
     if (Math.abs(totalAfter - totalBefore) > 0.01) {
       changeMonths.set(monthKey, { delta: totalAfter - totalBefore, totalAfter })
     }
