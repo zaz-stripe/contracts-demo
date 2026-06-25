@@ -1095,6 +1095,7 @@ function FormPanel({
   onSelectNode,
   onUpdateOneTimeFee,
   onRemoveOneTimeFee,
+  onQuantityFocus,
 }: {
   selectedNodeId: string
   selectedPlans: SelectedPlanEntry[]
@@ -1131,6 +1132,7 @@ function FormPanel({
   onSelectNode: (id: string) => void
   onUpdateOneTimeFee: (id: string, updates: Partial<OneTimeFee>) => void
   onRemoveOneTimeFee: (id: string) => void
+  onQuantityFocus?: (planId: string | null) => void
   }) {
 
   // When the user extends/changes one product's end date and other products
@@ -1676,7 +1678,9 @@ function FormPanel({
             type="number"
             value={selectedPlan.quantity}
             onChange={e => onUpdatePlan(selectedPlan.plan.id, { quantity: parseInt(e.target.value) || 1 })}
-            className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+            onFocus={() => onQuantityFocus?.(selectedPlan.plan.id)}
+            onBlur={() => onQuantityFocus?.(null)}
+            className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#3BABFD] focus:ring-[3px] focus:ring-[#3BABFD]/15 transition-all"
           />
         </div>
 
@@ -1796,7 +1800,9 @@ function FormPanel({
             type="number"
             value={selectedPlan.quantity}
             onChange={e => onUpdatePlan(selectedPlan.plan.id, { quantity: parseInt(e.target.value) || 1 })}
-            className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#533AFD] focus:ring-[3px] focus:ring-[#533AFD]/15 transition-all"
+            onFocus={() => onQuantityFocus?.(selectedPlan.plan.id)}
+            onBlur={() => onQuantityFocus?.(null)}
+            className="w-full h-9 px-3 rounded-md border border-[#dfe1e6] bg-white text-sm text-[#1A1A1A] outline-none focus:border-[#3BABFD] focus:ring-[3px] focus:ring-[#3BABFD]/15 transition-all"
           />
         </div>
 
@@ -2367,6 +2373,7 @@ function TimelineVisualization({
   currency,
   draftExpiry,
   billingMethod = "auto",
+  quantityFocusedPlanId = null,
 }: {
   selectedPlans: SelectedPlanEntry[]
   selectedNodeId: string
@@ -2377,11 +2384,23 @@ function TimelineVisualization({
   currency: string
   draftExpiry: string
   billingMethod?: "auto" | "manual"
+  quantityFocusedPlanId?: string | null
 }) {
   const [viewMode, setViewMode] = useState<"timeline" | "pdf">("timeline")
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(() =>
     new Set(selectedPlans.map(e => e.plan.id))
   )
+
+  // Auto-expand newly added plans (up to 10)
+  useEffect(() => {
+    if (selectedPlans.length <= 10) {
+      setExpandedPlans(prev => {
+        const next = new Set(prev)
+        selectedPlans.forEach(e => next.add(e.plan.id))
+        return next
+      })
+    }
+  }, [selectedPlans])
 
   // As-of scrubber: the date the playhead is pointing at (null = not engaged).
   const [scrubDate, setScrubDate] = useState<Date | null>(null)
@@ -3006,7 +3025,7 @@ function TimelineVisualization({
                             className={cn(
                               "absolute top-2 bottom-2 flex items-center gap-1.5 px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap rounded-md border transition-all",
                               segSelected
-                                ? "bg-[#f0eeff] border-[#533AFD] text-[#353A44]"
+                                ? "bg-white border-[#3BABFD] text-[#353A44]"
                                 : "bg-white border-[#d4d8e0] text-[#353A44] hover:border-[#a0a8b4]",
                             )}
                             style={{ left: left + 1, width: Math.max(width - 2, 8) }}
@@ -3057,7 +3076,7 @@ function TimelineVisualization({
                                 discountSelected
                                   ? isMarkup
                                     ? "bg-[#fef3c7] border-[#f59e0b] text-[#92400e]"
-                                    : "bg-[#f0eeff] border-[#533AFD] text-[#3d2db0]"
+                                    : "bg-white border-[#3BABFD] text-[#353A44]"
                                   : isMarkup
                                     ? "bg-[#fffbeb] border-[#fde68a] text-[#a16207]"
                                     : "bg-white border-[#d4c9ff] text-[#533AFD]",
@@ -3088,7 +3107,7 @@ function TimelineVisualization({
                         const width = getWidth(seg.start, seg.end)
                         const segSelected =
                           (seg.id && selectedNodeId === `plan-${entry.plan.id}-qty-${seg.id}`) ||
-                          (!seg.id && priceSelected)
+                          (!seg.id && quantityFocusedPlanId === entry.plan.id)
                         const before = lineStateAt(entry, new Date(seg.start.getTime() - 86400000)).mrr
                         const after = lineStateAt(entry, seg.start).mrr
                         const delta = seg.id ? after - before : 0
@@ -7272,6 +7291,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   // Lifted so the FormPanel "Schedule" module can open the dropdown that lives
   // in the tree navigation, teaching the user where this action lives.
   const [scheduleMenuPlanId, setScheduleMenuPlanId] = useState<string | null>(null)
+  const [quantityFocusedPlanId, setQuantityFocusedPlanId] = useState<string | null>(null)
 
   // Continue from the get started screen into the editor. The editor opens with
   // EXACTLY what the get-started live preview showed: the same contract id,
@@ -7814,6 +7834,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           onSelectNode={handleSelectNode}
           onUpdateOneTimeFee={handleUpdateOneTimeFee}
           onRemoveOneTimeFee={handleRemoveOneTimeFee}
+          onQuantityFocus={setQuantityFocusedPlanId}
         />
       </div>
       {hasContractContent && (
@@ -8033,6 +8054,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           onSelectNode={handleSelectNode}
           onUpdateOneTimeFee={handleUpdateOneTimeFee}
           onRemoveOneTimeFee={handleRemoveOneTimeFee}
+          onQuantityFocus={setQuantityFocusedPlanId}
         />
       </div>
       {consolePosition !== "inline" && (
@@ -8083,6 +8105,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       currency={currency}
       draftExpiry={draftExpiry}
       billingMethod={billingMethod}
+      quantityFocusedPlanId={quantityFocusedPlanId}
     />
   )
 
@@ -8230,6 +8253,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
             onSelectNode={handleSelectNode}
             onUpdateOneTimeFee={handleUpdateOneTimeFee}
             onRemoveOneTimeFee={handleRemoveOneTimeFee}
+            onQuantityFocus={setQuantityFocusedPlanId}
           />
         </div>
       </div>
