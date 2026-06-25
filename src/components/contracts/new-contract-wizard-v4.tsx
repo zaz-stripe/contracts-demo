@@ -8324,7 +8324,22 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       {editorHeader}
       <div className="flex flex-1 overflow-hidden">
         {layoutMode !== "north-star" && mainColumn}
-        {timeline}
+        <div className="relative flex-1 overflow-hidden flex">
+          {/* Collapse / expand affordance */}
+          <button
+            onClick={() => setLayoutMode(layoutMode === "north-star" ? "split" : "north-star")}
+            className="absolute left-0 top-1/2 -translate-y-1/2 z-30 h-10 w-4 bg-white border-y border-r border-[#ebeef1] rounded-r flex items-center justify-center hover:bg-[#f5f6f8] transition-colors shadow-sm"
+            title={layoutMode === "north-star" ? "Show editor" : "Hide editor"}
+          >
+            {layoutMode === "north-star"
+              ? <ChevronRight className="w-2.5 h-2.5 text-[#9aa0ac]" />
+              : <ChevronLeft className="w-2.5 h-2.5 text-[#9aa0ac]" />
+            }
+          </button>
+          <div className="flex-1 overflow-hidden">
+            {timeline}
+          </div>
+        </div>
       </div>
       {modals}
       {persistentOverlay}
