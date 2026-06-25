@@ -2470,19 +2470,25 @@ function TimelineVisualization({
     : MIN_COL_WIDTH
   const timelineWidth = months.length * colWidth
 
-  // Compute months where the total billed MRR changes — used for smart invoice markers
+  // Compute months where the total billed MRR changes — driven by actual event
+  // dates so events after the 15th aren't missed by mid-month sampling.
   const changeMonths = new Map<string, { delta: number; totalAfter: number }>()
-  months.forEach((m, i) => {
-    const d = new Date(m.year, m.month, 15)
-    const total = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, d).mrr, 0)
-    if (i === 0) {
-      if (total > 0.01) changeMonths.set(`${m.year}-${m.month}`, { delta: total, totalAfter: total })
-      return
-    }
-    const prev = months[i - 1]
-    const prevTotal = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, new Date(prev.year, prev.month, 15)).mrr, 0)
-    if (Math.abs(total - prevTotal) > 0.01) {
-      changeMonths.set(`${m.year}-${m.month}`, { delta: total - prevTotal, totalAfter: total })
+  const eventDates = new Set<string>()
+  selectedPlans.forEach(entry => {
+    eventDates.add(entry.startDate)
+    entry.priceOverrides.forEach(o => { eventDates.add(o.startDate); eventDates.add(o.endDate) })
+    entry.quantityUpdates.forEach(q => eventDates.add(q.effectiveDate))
+    entry.discounts.forEach(d => { eventDates.add(d.startDate); eventDates.add(d.endDate) })
+  })
+  Array.from(eventDates).forEach(dateStr => {
+    const eventDate = new Date(dateStr)
+    if (isNaN(eventDate.getTime())) return
+    const monthKey = `${eventDate.getFullYear()}-${eventDate.getMonth()}`
+    const dayBefore = new Date(eventDate.getTime() - 86400000)
+    const totalBefore = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, dayBefore).mrr, 0)
+    const totalAfter = selectedPlans.reduce((sum, p) => sum + lineStateAt(p, eventDate).mrr, 0)
+    if (Math.abs(totalAfter - totalBefore) > 0.01) {
+      changeMonths.set(monthKey, { delta: totalAfter - totalBefore, totalAfter })
     }
   })
 
