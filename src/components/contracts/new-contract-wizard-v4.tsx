@@ -3031,8 +3031,8 @@ function TimelineVisualization({
                             style={{ left: left + 1, width: Math.max(width - 2, 8) }}
                           >
                             {seg.id
-                              ? <Calendar className="w-3 h-3 text-[#A0A8B4] shrink-0" />
-                              : <Tag className="w-3 h-3 text-[#A0A8B4] shrink-0" />
+                              ? <Calendar className={cn("w-3 h-3 shrink-0", segSelected ? "text-[#3BABFD]" : "text-[#A0A8B4]")} />
+                              : <Tag className={cn("w-3 h-3 shrink-0", segSelected ? "text-[#3BABFD]" : "text-[#A0A8B4]")} />
                             }
                             ${seg.value.toFixed(seg.value % 1 === 0 ? 0 : 2)} USD per month
                           </button>
@@ -3137,12 +3137,12 @@ function TimelineVisualization({
                             className={cn(
                               "absolute top-2 bottom-2 flex items-center gap-1.5 px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border rounded-md",
                               segSelected
-                                ? "bg-[#f0eeff] border-[#533AFD] text-[#353A44]"
+                                ? "bg-white border-[#3BABFD] text-[#353A44]"
                                 : "bg-white border-[#d4d8e0] text-[#475569] hover:border-[#a0a8b4]",
                             )}
                             style={{ left: left + 1, width: Math.max(width - 2, 8) }}
                           >
-                            <Hash className="w-2.5 h-2.5 shrink-0 text-[#9aa0ac]" />
+                            <Hash className={cn("w-2.5 h-2.5 shrink-0", segSelected ? "text-[#3BABFD]" : "text-[#9aa0ac]")} />
                             {seg.value} seats
                           </button>
                         )
