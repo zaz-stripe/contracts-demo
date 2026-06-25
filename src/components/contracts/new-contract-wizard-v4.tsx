@@ -2490,11 +2490,11 @@ function TimelineVisualization({
   }
 
   Array.from(eventDates).forEach(dateStr => {
-    // Parse as local noon to avoid UTC→local date shift (e.g. "2026-06-01" UTC = May 31 in US timezones)
-    const eventDate = new Date(dateStr.length >= 10 ? dateStr.slice(0, 10) + "T12:00:00" : dateStr)
+    // Dates are stored as "Jun 1, 2026" (local time) — parse directly, no ISO shift needed
+    const eventDate = new Date(dateStr)
     if (isNaN(eventDate.getTime())) return
     const monthKey = `${eventDate.getFullYear()}-${eventDate.getMonth()}`
-    const dayBefore = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate() - 1, 12)
+    const dayBefore = new Date(eventDate.getTime() - 86400000)
     const totalBefore = selectedPlans.reduce((sum, p) => sum + activeMrr(p, dayBefore), 0)
     const totalAfter = selectedPlans.reduce((sum, p) => sum + activeMrr(p, eventDate), 0)
     if (Math.abs(totalAfter - totalBefore) > 0.01) {
