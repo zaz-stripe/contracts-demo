@@ -1231,11 +1231,17 @@ function FormPanel({
 
   // Find the relevant plan and data based on selected node
   const getPlanFromNodeId = (nodeId: string): SelectedPlanEntry | null => {
+    let best: SelectedPlanEntry | null = null
+    let bestLen = 0
     for (const entry of selectedPlans) {
       if (nodeId === `plan-${entry.plan.id}`) return entry
-      if (nodeId.startsWith(`plan-${entry.plan.id}-`)) return entry
+      const prefix = `plan-${entry.plan.id}-`
+      if (nodeId.startsWith(prefix) && prefix.length > bestLen) {
+        best = entry
+        bestLen = prefix.length
+      }
     }
-    return null
+    return best
   }
 
   const selectedPlan = getPlanFromNodeId(selectedNodeId)
@@ -2476,9 +2482,8 @@ function TimelineVisualization({
   const eventDates = new Set<string>()
   selectedPlans.forEach(entry => {
     if (entry.startDate) eventDates.add(entry.startDate)
-    entry.priceOverrides?.forEach(o => { if (o.startDate) eventDates.add(o.startDate); if (o.endDate) eventDates.add(o.endDate) })
+    entry.priceOverrides?.forEach(o => { if (o.startDate) eventDates.add(o.startDate) })
     entry.quantityUpdates?.forEach(q => { if (q.effectiveDate) eventDates.add(q.effectiveDate) })
-    entry.discounts?.forEach(d => { if (d.startDate) eventDates.add(d.startDate); if (d.endDate) eventDates.add(d.endDate) })
   })
   // lineStateAt doesn't check plan active status — wrap it to return 0 outside the plan window
   const activeMrr = (entry: SelectedPlanEntry, date: Date): number => {
@@ -2497,9 +2502,12 @@ function TimelineVisualization({
     const dayBefore = new Date(eventDate.getTime() - 86400000)
     const totalBefore = selectedPlans.reduce((sum, p) => sum + activeMrr(p, dayBefore), 0)
     const totalAfter = selectedPlans.reduce((sum, p) => sum + activeMrr(p, eventDate), 0)
-    if (Math.abs(totalAfter - totalBefore) > 0.01) {
-      changeMonths.set(monthKey, { delta: totalAfter - totalBefore, totalAfter })
-    }
+    // Diamonds always generate an invoice; pro-rate if mid-month
+    const daysInMonth = new Date(eventDate.getFullYear(), eventDate.getMonth() + 1, 0).getDate()
+    const dayOfEvent = eventDate.getDate()
+    const proRatedTotal = (totalBefore * (dayOfEvent - 1) + totalAfter * (daysInMonth - dayOfEvent + 1)) / daysInMonth
+    const delta = totalAfter - totalBefore
+    changeMonths.set(monthKey, { delta, totalAfter: proRatedTotal })
   })
 
   // Calculate horizontal position (px) for a date along the time axis
@@ -2722,7 +2730,7 @@ function TimelineVisualization({
         <div ref={setScrollEl} className="flex-1 overflow-auto bg-white">
           <div style={{ width: Math.max(labelW + timelineWidth, availableWidth) }}>
             {/* ===== Header: year + month axis ===== */}
-            <div className="sticky top-0 z-20 bg-white border-b border-[#ebeef1]">
+            <div className="sticky top-0 z-20 bg-white border-b-[0.5px] border-[#ebeef1]">
               {/* Year row */}
               <div className="flex">
                 <div
@@ -2893,7 +2901,7 @@ function TimelineVisualization({
               return (
                 <div
                   key={entry.plan.id}
-                  className="border-b border-[#d4d8e0] bg-white"
+                  className="border-b-[0.5px] border-[#d4d8e0] bg-white"
                 >
                   {/* Plan header row */}
                   <div className="flex items-stretch">
@@ -2908,7 +2916,7 @@ function TimelineVisualization({
                         onSelectNode(`plan-${entry.plan.id}-price`)
                       }}
                       className={cn(
-                        "shrink-0 sticky left-0 z-10 flex items-center gap-2 px-3 py-2.5 border-r border-[#ebeef1] text-left transition-colors",
+                        "shrink-0 sticky left-0 z-10 flex items-center gap-2 px-3 py-2.5 border-r-[0.5px] border-[#ebeef1] text-left transition-colors",
                         planSelected ? "bg-white" : "bg-white hover:bg-[#f5f6f8]",
                       )}
                       style={{ width: labelW }}
@@ -2919,14 +2927,7 @@ function TimelineVisualization({
                           : <ChevronRight className="w-3 h-3" />
                         }
                       </span>
-                      <span
-                        className={cn(
-                          "w-5 h-5 rounded flex items-center justify-center shrink-0",
-                          planSelected ? "bg-[#353A44] text-white" : "bg-[#eef0f3] text-[#475569]",
-                        )}
-                      >
-                        <Package className="w-3 h-3" />
-                      </span>
+                      <Package className="w-3.5 h-3.5 text-[#6c7688] shrink-0" />
                       <span className="text-sm font-medium text-[#353A44] truncate">
                         {entry.plan.name}
                       </span>
@@ -2938,7 +2939,7 @@ function TimelineVisualization({
                         className={cn(
                           "absolute top-1/2 -translate-y-1/2 h-7 rounded-md flex items-center px-3 text-xs font-medium text-white transition-all",
                           planSelected
-                            ? "bg-[#1a1a1a] ring-2 ring-[#353A44] ring-offset-1"
+                            ? "bg-[#1a1a1a] ring-2 ring-[#533AFD] ring-offset-1"
                             : "bg-[#1a1a1a] hover:bg-[#353A44]",
                         )}
                         style={{ left: planLeft, width: planWidth }}
@@ -2956,7 +2957,7 @@ function TimelineVisualization({
                   {/* Pricing sub-row */}
                   <div className="flex items-stretch">
                     <div
-                      className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
+                      className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r-[0.5px] border-[#ebeef1]"
                       style={{ width: labelW }}
                     >
                       <span className="text-xs text-[#9aa0ac]">Pricing</span>
@@ -3018,7 +3019,7 @@ function TimelineVisualization({
                   {entry.discounts.length > 0 && (
                     <div className="flex items-stretch">
                       <div
-                        className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
+                        className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r-[0.5px] border-[#ebeef1]"
                         style={{ width: labelW }}
                       >
                         <span className="text-xs text-[#9aa0ac]">Discounts & Markups</span>
@@ -3068,7 +3069,7 @@ function TimelineVisualization({
                   {/* Quantity sub-row */}
                   <div className="flex items-stretch">
                     <div
-                      className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r border-[#ebeef1]"
+                      className="shrink-0 sticky left-0 z-10 flex items-center pl-9 pr-3 py-2 bg-white border-r-[0.5px] border-[#ebeef1]"
                       style={{ width: labelW }}
                     >
                       <span className="text-xs text-[#9aa0ac]">Quantity</span>
@@ -3110,7 +3111,7 @@ function TimelineVisualization({
                             className={cn(
                               "absolute top-2 bottom-2 flex items-center gap-1.5 px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border rounded-md",
                               segSelected
-                                ? "bg-white border-[#353A44] text-[#353A44]"
+                                ? "bg-[#f0eeff] border-[#533AFD] text-[#353A44]"
                                 : "bg-white border-[#d4d8e0] text-[#475569] hover:border-[#a0a8b4]",
                             )}
                             style={{ left: left + 1, width: Math.max(width - 2, 8) }}
@@ -3129,7 +3130,7 @@ function TimelineVisualization({
             })}
 
           {/* ===== Invoices — sticky bottom, shown only at billing-change months ===== */}
-          <div className="sticky bottom-0 z-20 flex items-stretch bg-white border-t border-[#ebeef1]">
+          <div className="sticky bottom-0 z-20 flex items-stretch bg-white border-t-[0.5px] border-[#ebeef1]">
             <div
               className="shrink-0 sticky left-0 z-10 flex items-center px-3 py-3 bg-white border-r border-[#ebeef1]"
               style={{ width: labelW }}
