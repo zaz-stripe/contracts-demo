@@ -465,7 +465,15 @@ function TreeSidebar({
           quantityUpdateId: qu.id,
         })
       })
-      
+
+      // Schedule action
+      planChildren.push({
+        id: `${planNodeId}-add-schedule`,
+        type: "add-schedule",
+        label: "Schedule",
+        planId: entry.plan.id,
+      })
+
       nodes.push({
         id: planNodeId,
         type: "plan",
