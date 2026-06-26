@@ -5,7 +5,7 @@ import {
   Search, Calendar, ArrowRight, Package, X, Check, ChevronDown, ChevronRight, ChevronLeft,
   FileText, User, Tag, Hash, Plus, Trash2, Percent, Eye, MoreHorizontal,
   Upload, UploadCloud, Pencil, Sparkles, Loader2, Send, AlertTriangle, Paperclip,
-  Receipt, TrendingUp
+  Receipt, TrendingUp, LayoutGrid
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { planCatalog, type PlanTemplate } from "@/lib/plan-catalog"
@@ -2374,6 +2374,7 @@ function TimelineVisualization({
   draftExpiry,
   billingMethod = "auto",
   quantityFocusedPlanId = null,
+  timelineEnabled = true,
 }: {
   selectedPlans: SelectedPlanEntry[]
   selectedNodeId: string
@@ -2385,8 +2386,12 @@ function TimelineVisualization({
   draftExpiry: string
   billingMethod?: "auto" | "manual"
   quantityFocusedPlanId?: string | null
+  timelineEnabled?: boolean
 }) {
   const [viewMode, setViewMode] = useState<"timeline" | "pdf">("timeline")
+  useEffect(() => {
+    if (timelineEnabled === false) setViewMode("pdf")
+  }, [timelineEnabled])
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(() =>
     new Set(selectedPlans.map(e => e.plan.id))
   )
@@ -2703,18 +2708,20 @@ function TimelineVisualization({
       {/* Header */}
       <div className="flex items-center px-4 h-12 bg-white shrink-0">
         <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-[#f5f6f8] border border-[#ebeef1]">
-          <button
-            onClick={() => setViewMode("timeline")}
-            className={cn(
-              "flex items-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors",
-              viewMode === "timeline"
-                ? "bg-white text-[#353A44] shadow-sm"
-                : "text-[#6c7688] hover:text-[#353A44]",
-            )}
-          >
-            <Eye className="w-3.5 h-3.5" />
-            Timeline
-          </button>
+          {timelineEnabled !== false && (
+            <button
+              onClick={() => setViewMode("timeline")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors",
+                viewMode === "timeline"
+                  ? "bg-white text-[#353A44] shadow-sm"
+                  : "text-[#6c7688] hover:text-[#353A44]",
+              )}
+            >
+              <Eye className="w-3.5 h-3.5" />
+              Timeline
+            </button>
+          )}
           <button
             onClick={() => setViewMode("pdf")}
             className={cn(
@@ -4260,6 +4267,263 @@ function ContractPreview({
         documentName={documentName}
         selectedPlans={selectedPlans}
       />
+    </div>
+  )
+}
+
+// =============================================================================
+// MILESTONE PROGRESSION
+// =============================================================================
+
+const MILESTONE_INFO = [
+  {
+    id: 0 as 0|1|2|3,
+    label: "M0",
+    title: "Core editor",
+    description: "Tree navigation, contract form, and PDF preview.",
+    netNew: "Editor foundation",
+  },
+  {
+    id: 1 as 0|1|2|3,
+    label: "M1",
+    title: "+ Onboarding",
+    description: "Get-started screen with guided setup before entering the editor.",
+    netNew: "Get-started flow",
+  },
+  {
+    id: 2 as 0|1|2|3,
+    label: "M2",
+    title: "+ AI console",
+    description: "Right-side console for AI-assisted contract drafting.",
+    netNew: "AI console",
+  },
+  {
+    id: 3 as 0|1|2|3,
+    label: "M3",
+    title: "+ Timeline",
+    description: "Timeline preview replaces PDF as the primary view. PDF still accessible.",
+    netNew: "Timeline preview",
+  },
+]
+
+function ThumbnailM0() {
+  return (
+    <svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <rect width="160" height="100" rx="6" fill="#f8f9fa" stroke="#e8eaed" strokeWidth="1"/>
+      <rect width="160" height="14" rx="6" fill="#f0f1f4"/>
+      <rect y="8" width="160" height="6" fill="#f0f1f4"/>
+      <circle cx="9" cy="7" r="2.5" fill="#dde0e6"/><circle cx="17" cy="7" r="2.5" fill="#dde0e6"/><circle cx="25" cy="7" r="2.5" fill="#dde0e6"/>
+      <line x1="0" y1="14" x2="160" y2="14" stroke="#e8eaed" strokeWidth="0.5"/>
+      {/* Tree */}
+      <rect x="0" y="14" width="30" height="86" fill="#f5f6f8"/>
+      <line x1="30" y1="14" x2="30" y2="100" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="5" y="20" width="16" height="2.5" rx="1" fill="#c8cdd8"/>
+      <rect x="8" y="26" width="12" height="2" rx="1" fill="#dde0e6"/><rect x="8" y="31" width="14" height="2" rx="1" fill="#dde0e6"/><rect x="8" y="36" width="10" height="2" rx="1" fill="#dde0e6"/>
+      <rect x="5" y="43" width="16" height="2.5" rx="1" fill="#c8cdd8"/>
+      <rect x="8" y="49" width="12" height="2" rx="1" fill="#dde0e6"/><rect x="8" y="54" width="10" height="2" rx="1" fill="#dde0e6"/>
+      {/* Form */}
+      <rect x="30" y="14" width="50" height="86" fill="white"/>
+      <line x1="80" y1="14" x2="80" y2="100" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="35" y="20" width="26" height="2.5" rx="1" fill="#c8cdd8"/>
+      <rect x="35" y="27" width="38" height="6" rx="2" fill="#f5f6f8"/><rect x="35" y="37" width="38" height="6" rx="2" fill="#f5f6f8"/><rect x="35" y="47" width="38" height="6" rx="2" fill="#f5f6f8"/>
+      <rect x="35" y="57" width="20" height="2" rx="1" fill="#e8eaed"/>
+      <rect x="35" y="63" width="38" height="6" rx="2" fill="#f5f6f8"/>
+      {/* PDF */}
+      <rect x="80" y="14" width="80" height="86" fill="#f5f6f8"/>
+      <rect x="93" y="21" width="54" height="72" rx="2" fill="white" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="99" y="28" width="36" height="2.5" rx="1" fill="#c8cdd8"/>
+      <rect x="99" y="34" width="30" height="2" rx="1" fill="#e8eaed"/><rect x="99" y="39" width="32" height="2" rx="1" fill="#e8eaed"/><rect x="99" y="44" width="26" height="2" rx="1" fill="#e8eaed"/>
+      <rect x="99" y="50" width="32" height="2" rx="1" fill="#e8eaed"/><rect x="99" y="55" width="28" height="2" rx="1" fill="#e8eaed"/>
+      <rect x="99" y="60" width="30" height="2" rx="1" fill="#e8eaed"/><rect x="99" y="65" width="24" height="2" rx="1" fill="#e8eaed"/>
+    </svg>
+  )
+}
+
+function ThumbnailM1() {
+  return (
+    <svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <rect width="160" height="100" rx="6" fill="#f8f9fa" stroke="#e8eaed" strokeWidth="1"/>
+      <rect width="160" height="14" rx="6" fill="#f0f1f4"/>
+      <rect y="8" width="160" height="6" fill="#f0f1f4"/>
+      <circle cx="9" cy="7" r="2.5" fill="#dde0e6"/><circle cx="17" cy="7" r="2.5" fill="#dde0e6"/><circle cx="25" cy="7" r="2.5" fill="#dde0e6"/>
+      <line x1="0" y1="14" x2="160" y2="14" stroke="#e8eaed" strokeWidth="0.5"/>
+      {/* Get-started (NET NEW — blue) */}
+      <rect x="0" y="14" width="75" height="86" fill="#f0f8ff"/>
+      <line x1="75" y1="14" x2="75" y2="100" stroke="#c5e6fd" strokeWidth="0.5"/>
+      <rect x="9" y="22" width="48" height="3.5" rx="1.5" fill="#3BABFD"/>
+      <rect x="9" y="29" width="38" height="2" rx="1" fill="#93d4fe"/><rect x="9" y="33" width="32" height="2" rx="1" fill="#b8e3fe"/>
+      <rect x="9" y="41" width="57" height="7" rx="2" fill="white" stroke="#3BABFD" strokeWidth="0.5"/>
+      <rect x="9" y="52" width="57" height="7" rx="2" fill="white" stroke="#3BABFD" strokeWidth="0.5"/>
+      <rect x="9" y="72" width="32" height="8" rx="3" fill="#3BABFD"/>
+      <rect x="45" y="73" width="20" height="6" rx="2.5" fill="white" stroke="#93d4fe" strokeWidth="0.75"/>
+      {/* PDF (existing, grey) */}
+      <rect x="75" y="14" width="85" height="86" fill="#f5f6f8"/>
+      <rect x="88" y="22" width="58" height="71" rx="2" fill="white" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="94" y="29" width="40" height="2.5" rx="1" fill="#c8cdd8"/>
+      <rect x="94" y="35" width="32" height="2" rx="1" fill="#e8eaed"/><rect x="94" y="40" width="36" height="2" rx="1" fill="#e8eaed"/>
+      <rect x="94" y="45" width="28" height="2" rx="1" fill="#e8eaed"/>
+      <rect x="94" y="51" width="34" height="2" rx="1" fill="#e8eaed"/><rect x="94" y="56" width="30" height="2" rx="1" fill="#e8eaed"/>
+    </svg>
+  )
+}
+
+function ThumbnailM2() {
+  return (
+    <svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <rect width="160" height="100" rx="6" fill="#f8f9fa" stroke="#e8eaed" strokeWidth="1"/>
+      <rect width="160" height="14" rx="6" fill="#f0f1f4"/>
+      <rect y="8" width="160" height="6" fill="#f0f1f4"/>
+      <circle cx="9" cy="7" r="2.5" fill="#dde0e6"/><circle cx="17" cy="7" r="2.5" fill="#dde0e6"/><circle cx="25" cy="7" r="2.5" fill="#dde0e6"/>
+      <line x1="0" y1="14" x2="160" y2="14" stroke="#e8eaed" strokeWidth="0.5"/>
+      {/* Tree (grey) */}
+      <rect x="0" y="14" width="24" height="86" fill="#f5f6f8"/>
+      <line x1="24" y1="14" x2="24" y2="100" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="4" y="20" width="13" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="6" y="25" width="10" height="1.5" rx="0.75" fill="#dde0e6"/><rect x="6" y="29" width="11" height="1.5" rx="0.75" fill="#dde0e6"/>
+      <rect x="4" y="35" width="13" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="6" y="40" width="9" height="1.5" rx="0.75" fill="#dde0e6"/>
+      {/* Form (grey) */}
+      <rect x="24" y="14" width="40" height="86" fill="white"/>
+      <line x1="64" y1="14" x2="64" y2="100" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="28" y="20" width="20" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="28" y="26" width="32" height="5" rx="1.5" fill="#f5f6f8"/><rect x="28" y="34" width="32" height="5" rx="1.5" fill="#f5f6f8"/><rect x="28" y="42" width="32" height="5" rx="1.5" fill="#f5f6f8"/>
+      <rect x="28" y="50" width="18" height="1.5" rx="0.75" fill="#e8eaed"/>
+      <rect x="28" y="55" width="32" height="5" rx="1.5" fill="#f5f6f8"/>
+      {/* PDF (grey) */}
+      <rect x="64" y="14" width="56" height="86" fill="#f5f6f8"/>
+      <line x1="120" y1="14" x2="120" y2="100" stroke="#c5e6fd" strokeWidth="0.5"/>
+      <rect x="72" y="21" width="40" height="72" rx="1.5" fill="white" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="76" y="27" width="28" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="76" y="32" width="22" height="1.5" rx="0.75" fill="#e8eaed"/><rect x="76" y="36" width="24" height="1.5" rx="0.75" fill="#e8eaed"/>
+      <rect x="76" y="40" width="20" height="1.5" rx="0.75" fill="#e8eaed"/>
+      <rect x="76" y="46" width="24" height="1.5" rx="0.75" fill="#e8eaed"/><rect x="76" y="50" width="20" height="1.5" rx="0.75" fill="#e8eaed"/>
+      {/* Console (NET NEW — blue) */}
+      <rect x="120" y="14" width="40" height="86" fill="#f0f8ff"/>
+      <rect x="120" y="14" width="40" height="10" fill="#e8f5ff"/>
+      <line x1="120" y1="24" x2="160" y2="24" stroke="#c5e6fd" strokeWidth="0.5"/>
+      <rect x="124" y="17" width="14" height="2" rx="1" fill="#3BABFD"/>
+      <rect x="124" y="27" width="20" height="5" rx="2" fill="#ddf0ff"/>
+      <rect x="129" y="35" width="24" height="5" rx="2" fill="#3BABFD"/>
+      <rect x="124" y="43" width="18" height="5" rx="2" fill="#ddf0ff"/>
+      <rect x="127" y="51" width="24" height="5" rx="2" fill="#3BABFD"/>
+      <rect x="122" y="82" width="36" height="8" rx="2" fill="white" stroke="#3BABFD" strokeWidth="0.5"/>
+    </svg>
+  )
+}
+
+function ThumbnailM3() {
+  return (
+    <svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+      <rect width="160" height="100" rx="6" fill="#f8f9fa" stroke="#e8eaed" strokeWidth="1"/>
+      <rect width="160" height="14" rx="6" fill="#f0f1f4"/>
+      <rect y="8" width="160" height="6" fill="#f0f1f4"/>
+      <circle cx="9" cy="7" r="2.5" fill="#dde0e6"/><circle cx="17" cy="7" r="2.5" fill="#dde0e6"/><circle cx="25" cy="7" r="2.5" fill="#dde0e6"/>
+      <line x1="0" y1="14" x2="160" y2="14" stroke="#e8eaed" strokeWidth="0.5"/>
+      {/* Tree (grey) */}
+      <rect x="0" y="14" width="24" height="86" fill="#f5f6f8"/>
+      <line x1="24" y1="14" x2="24" y2="100" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="4" y="20" width="13" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="6" y="25" width="10" height="1.5" rx="0.75" fill="#dde0e6"/><rect x="6" y="29" width="11" height="1.5" rx="0.75" fill="#dde0e6"/>
+      <rect x="4" y="35" width="13" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="6" y="40" width="9" height="1.5" rx="0.75" fill="#dde0e6"/>
+      {/* Form (grey) */}
+      <rect x="24" y="14" width="38" height="86" fill="white"/>
+      <line x1="62" y1="14" x2="62" y2="100" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="28" y="20" width="20" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="28" y="26" width="30" height="5" rx="1.5" fill="#f5f6f8"/><rect x="28" y="34" width="30" height="5" rx="1.5" fill="#f5f6f8"/>
+      <rect x="28" y="42" width="30" height="5" rx="1.5" fill="#f5f6f8"/><rect x="28" y="50" width="30" height="5" rx="1.5" fill="#f5f6f8"/>
+      {/* Timeline (NET NEW — blue) */}
+      <rect x="62" y="14" width="64" height="86" fill="white"/>
+      <line x1="126" y1="14" x2="126" y2="100" stroke="#c5e6fd" strokeWidth="0.5"/>
+      <rect x="62" y="14" width="64" height="10" fill="#f0f8ff"/>
+      <line x1="62" y1="24" x2="126" y2="24" stroke="#c5e6fd" strokeWidth="0.5"/>
+      <rect x="65" y="17" width="22" height="4" rx="2" fill="white" stroke="#3BABFD" strokeWidth="0.5"/>
+      <rect x="91" y="17" width="22" height="4" rx="2" fill="#f5f6f8"/>
+      <line x1="72" y1="24" x2="72" y2="100" stroke="#f0f1f4" strokeWidth="1"/>
+      <line x1="83" y1="24" x2="83" y2="100" stroke="#f0f1f4" strokeWidth="1"/>
+      <line x1="94" y1="24" x2="94" y2="100" stroke="#f0f1f4" strokeWidth="1"/>
+      <line x1="105" y1="24" x2="105" y2="100" stroke="#f0f1f4" strokeWidth="1"/>
+      <line x1="116" y1="24" x2="116" y2="100" stroke="#f0f1f4" strokeWidth="1"/>
+      <rect x="66" y="29" width="8" height="2" rx="1" fill="#c8cdd8"/><rect x="74" y="29" width="46" height="5" rx="2" fill="#3BABFD"/>
+      <rect x="66" y="39" width="8" height="2" rx="1" fill="#c8cdd8"/><rect x="74" y="39" width="36" height="5" rx="2" fill="#93d4fe"/>
+      <rect x="66" y="49" width="8" height="2" rx="1" fill="#c8cdd8"/><rect x="74" y="49" width="52" height="5" rx="2" fill="#3BABFD"/>
+      <rect x="66" y="59" width="8" height="2" rx="1" fill="#c8cdd8"/><rect x="74" y="59" width="42" height="5" rx="2" fill="#93d4fe"/>
+      {/* Console (grey — already existed) */}
+      <rect x="126" y="14" width="34" height="86" fill="#f5f6f8"/>
+      <rect x="126" y="14" width="34" height="10" fill="#f0f1f4"/>
+      <line x1="126" y1="24" x2="160" y2="24" stroke="#e8eaed" strokeWidth="0.5"/>
+      <rect x="130" y="17" width="12" height="2" rx="1" fill="#c8cdd8"/>
+      <rect x="129" y="27" width="16" height="4" rx="1.5" fill="#dde0e6"/>
+      <rect x="133" y="34" width="20" height="4" rx="1.5" fill="#e8eaed"/>
+      <rect x="129" y="41" width="14" height="4" rx="1.5" fill="#dde0e6"/>
+      <rect x="133" y="48" width="20" height="4" rx="1.5" fill="#e8eaed"/>
+      <rect x="129" y="82" width="28" height="7" rx="2" fill="white" stroke="#e8eaed" strokeWidth="0.5"/>
+    </svg>
+  )
+}
+
+function MilestoneModal({
+  currentMilestone,
+  onSelect,
+  onClose,
+}: {
+  currentMilestone: 0|1|2|3
+  onSelect: (m: 0|1|2|3) => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-2xl border border-[#ebeef1] w-full max-w-3xl mx-4 p-6">
+        <div className="flex items-start justify-between mb-5">
+          <div>
+            <h2 className="text-base font-semibold text-[#353A44]">Editor milestones</h2>
+            <p className="text-xs text-[#6c7688] mt-0.5">Click a milestone to switch the active build state</p>
+          </div>
+          <button onClick={onClose} className="text-[#9aa0ac] hover:text-[#353A44] transition-colors mt-0.5">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="grid grid-cols-4 gap-3">
+          {MILESTONE_INFO.map((m) => {
+            const isActive = m.id === currentMilestone
+            return (
+              <button
+                key={m.id}
+                onClick={() => { onSelect(m.id); onClose() }}
+                className={cn(
+                  "flex flex-col rounded-xl border p-3 text-left transition-all",
+                  isActive
+                    ? "border-[#3BABFD] bg-[#f0f8ff] ring-2 ring-[#3BABFD]/20"
+                    : "border-[#e8eaed] bg-white hover:border-[#3BABFD]/50 hover:bg-[#f8fbff]"
+                )}
+              >
+                <div className="w-full aspect-[8/5] mb-3 rounded-lg overflow-hidden border border-[#e8eaed]">
+                  {m.id === 0 && <ThumbnailM0 />}
+                  {m.id === 1 && <ThumbnailM1 />}
+                  {m.id === 2 && <ThumbnailM2 />}
+                  {m.id === 3 && <ThumbnailM3 />}
+                </div>
+                <div className="flex items-center justify-between mb-0.5">
+                  <span className={cn("text-xs font-semibold", isActive ? "text-[#3BABFD]" : "text-[#353A44]")}>
+                    {m.label}
+                  </span>
+                  {isActive && (
+                    <span className="w-4 h-4 rounded-full bg-[#3BABFD] flex items-center justify-center">
+                      <Check className="w-2.5 h-2.5 text-white" />
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] font-semibold text-[#353A44] mb-1">{m.title}</p>
+                <p className="text-[10px] text-[#6c7688] leading-relaxed">{m.description}</p>
+                <div className="mt-2 pt-2 border-t border-[#e8eaed]">
+                  <span className="text-[10px] font-medium text-[#3BABFD]">+ {m.netNew}</span>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }
@@ -7113,6 +7377,21 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   // AI mode
   const [aiMode, setAiMode] = useState<AiMode>("chat")
 
+  // Milestone progression (persisted to localStorage)
+  const [milestone, setMilestone] = useState<0|1|2|3>(() => {
+    if (typeof window === 'undefined') return 3
+    const stored = localStorage.getItem('contract-milestone')
+    const n = Number(stored)
+    return (n >= 0 && n <= 3 ? n : 3) as 0|1|2|3
+  })
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false)
+  useEffect(() => {
+    localStorage.setItem('contract-milestone', String(milestone))
+  }, [milestone])
+  const milestoneConsoleEnabled = milestone >= 2
+  const milestoneTimelineEnabled = milestone >= 3
+  const milestoneGetStartedEnabled = milestone >= 1
+
   // Demo control panel (Cmd+/)
   const [consolePosition, setConsolePosition] = useState<ConsolePosition>("right")
   const [consoleHeight, setConsoleHeight] = useState(50)
@@ -7598,6 +7877,9 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     />
   ) : null
 
+  // Effective console position — milestone gates console availability
+  const effectiveConsole: ConsolePosition = milestoneConsoleEnabled ? consolePosition : "off"
+
   // "Inline" mode: tree+form in top half, console in bottom half of the same column.
   // When contract is empty, console fills the full height; once content is added it
   // transitions to 50/50 so the editor reveals itself.
@@ -7662,7 +7944,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
         <FormPanel
           selectedNodeId={selectedNodeId}
           selectedPlans={selectedPlans}
-          hideScheduleModule={hasScheduled || consolePosition === "inline" || consolePosition === "right"}
+          hideScheduleModule={hasScheduled || effectiveConsole === "inline" || effectiveConsole === "right"}
           contractId={contractId}
           customer={customer}
           currency={currency}
@@ -7789,9 +8071,8 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
     </>
   )
 
-  // Only show GetStartedScreen when console is off — when console is active
-  // it replaces the onboarding flow entirely.
-  if (!config && consolePosition === "off") {
+  // Show get-started screen only on M1+ and only when no contract is loaded yet
+  if (!config && effectiveConsole === "off" && milestoneGetStartedEnabled) {
     return (
       <>
         <GetStartedScreen
@@ -7807,9 +8088,37 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   // Shared sub-trees extracted to avoid repeating them across layout modes.
   const editorHeader = (
     <div className="flex items-center justify-between h-14 px-5 border-b border-[#ebeef1] shrink-0">
-      <h1 className="text-sm font-semibold text-[#353A44]">Contract {contractId}</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="text-sm font-semibold text-[#353A44]">Contract {contractId}</h1>
+        {/* Milestone selector */}
+        <div className="flex items-center gap-1.5">
+          <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-[#f5f6f8] border border-[#ebeef1]">
+            {([0, 1, 2, 3] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMilestone(m)}
+                className={cn(
+                  "h-6 px-2.5 rounded text-xs font-medium transition-colors",
+                  milestone === m
+                    ? "bg-[#353A44] text-white shadow-sm"
+                    : "text-[#6c7688] hover:text-[#353A44]",
+                )}
+              >
+                M{m}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowMilestoneModal(true)}
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-[#6c7688] hover:text-[#353A44] transition-colors"
+            title="View milestone progression"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
       <div className="flex items-center gap-2">
-        {consolePosition === "off" && (
+        {effectiveConsole === "off" && milestoneConsoleEnabled && (
           <button
             onClick={() => setConsolePosition("right")}
             className="px-3 py-1.5 rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-sm font-medium text-[#353A44] transition-colors flex items-center gap-1.5"
@@ -7837,7 +8146,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const leftColumn = (
     <div className="relative flex flex-col shrink-0 border-r border-[#ebeef1] overflow-hidden" style={{ width: consoleWidth }}>
       {/* "Over" mode: console overlays this column */}
-      {consolePosition === "over" && (
+      {effectiveConsole === "over" && (
         <div className="absolute inset-0 z-20 flex">
           <div className="w-[400px] h-full shrink-0">{consoleColumnEl}</div>
           <button
@@ -7882,7 +8191,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
         <FormPanel
           selectedNodeId={selectedNodeId}
           selectedPlans={selectedPlans}
-          hideScheduleModule={hasScheduled || consolePosition === "inline" || consolePosition === "right"}
+          hideScheduleModule={hasScheduled || effectiveConsole === "inline" || effectiveConsole === "right"}
           contractId={contractId}
           customer={customer}
           currency={currency}
@@ -7985,6 +8294,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       draftExpiry={draftExpiry}
       billingMethod={billingMethod}
       quantityFocusedPlanId={quantityFocusedPlanId}
+      timelineEnabled={milestoneTimelineEnabled}
     />
   )
 
@@ -8030,13 +8340,20 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           onConfirm={() => { setShowConfirm(false); handleSave() }}
         />
       )}
+      {showMilestoneModal && (
+        <MilestoneModal
+          currentMilestone={milestone}
+          onSelect={setMilestone}
+          onClose={() => setShowMilestoneModal(false)}
+        />
+      )}
     </>
   )
 
   // The main column: console replaces tree+form when console mode is active
-  const mainColumn = consolePosition === "inline"
+  const mainColumn = effectiveConsole === "inline"
     ? inlineLeftColumn
-    : consolePosition === "left" || consolePosition === "l+hdr"
+    : effectiveConsole === "left" || effectiveConsole === "l+hdr"
       ? (
         <div className="flex shrink-0 border-r border-[#ebeef1] overflow-hidden relative" style={{ width: consoleWidth }}>
           {consoleColumnEl}
@@ -8061,7 +8378,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
 
   // Mobile layout — stacks preview on top, action panel on bottom
   if (isMobile) {
-    const mobileBottomPanel = consolePosition !== "off" ? (
+    const mobileBottomPanel = effectiveConsole !== "off" ? (
       <div className="shrink-0 flex flex-col overflow-hidden" style={{ height: "50%" }}>
         {consoleColumnEl}
       </div>
@@ -8186,7 +8503,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   }
 
   // "L+Hdr" — console spans full height including the header row
-  if (consolePosition === "l+hdr") {
+  if (effectiveConsole === "l+hdr") {
     return (
       <div className="fixed inset-0 z-50 flex flex-row bg-white">
         <div className="flex shrink-0 h-full relative" style={{ width: consoleWidth }}>
@@ -8260,7 +8577,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
             {timeline}
           </div>
         </div>
-        {consolePosition === "right" && (
+        {effectiveConsole === "right" && (
           <div className="relative flex shrink-0 border-l border-[#ebeef1] overflow-hidden" style={{ width: consoleWidth }}>
             {consoleColumnEl}
             <div
