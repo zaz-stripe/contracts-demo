@@ -6407,24 +6407,6 @@ function EditorAssistant({
       )}
 
       {/* Floating launcher */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className={cn(
-          "absolute bottom-4 right-4 z-30 flex items-center gap-1.5 h-9 pl-2.5 pr-3 rounded-full border shadow-sm text-xs font-medium transition-colors",
-          open
-            ? "bg-[#533AFD] border-[#533AFD] text-white"
-            : "bg-white border-[#dfe1e6] text-[#353A44] hover:bg-[#f7f6fe]",
-        )}
-        aria-label="Toggle AI assistant"
-      >
-        <Sparkles className={cn("w-3.5 h-3.5", open ? "text-white" : "text-[#533AFD]")} />
-        Ask AI
-        {messages.length > 0 && !open && (
-          <span className="ml-0.5 min-w-4 h-4 px-1 flex items-center justify-center rounded-full bg-[#f0eefe] text-[10px] font-semibold text-[#533AFD]">
-            {messages.length}
-          </span>
-        )}
-      </button>
     </>
   )
 }
@@ -6818,14 +6800,6 @@ function AiCommandBarOverlay({ state, onApply }: { state: AiContractState; onApp
 
   return (
     <>
-      <button
-        onClick={() => setOpen(true)}
-        className="fixed top-[58px] right-4 z-[190] flex items-center gap-1.5 px-2.5 py-1.5 bg-white border border-[#ebeef1] rounded-full text-[11px] text-[#6c7688] hover:border-[#d8dee4] shadow-sm transition-colors"
-      >
-        <Sparkles size={11} className="text-[#533AFD]" />
-        Ask AI
-        <kbd className="text-[10px] bg-[#f5f6f8] border border-[#ebeef1] rounded px-1">⌘K</kbd>
-      </button>
       {open && (
         <div className="fixed inset-0 z-[300] flex items-start justify-center pt-[20vh]">
           <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
