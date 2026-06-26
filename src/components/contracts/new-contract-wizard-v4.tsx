@@ -3074,16 +3074,12 @@ function TimelineVisualization({
                               className={cn(
                                 "absolute top-2 bottom-2 flex items-center gap-1.5 px-2 text-[10px] font-medium overflow-hidden whitespace-nowrap transition-all border rounded-md",
                                 discountSelected
-                                  ? isMarkup
-                                    ? "bg-[#fef3c7] border-[#f59e0b] text-[#92400e]"
-                                    : "bg-white border-[#3BABFD] text-[#353A44]"
-                                  : isMarkup
-                                    ? "bg-[#fffbeb] border-[#fde68a] text-[#a16207]"
-                                    : "bg-white border-[#d4c9ff] text-[#533AFD]",
+                                  ? "bg-white border-[#3BABFD] text-[#353A44]"
+                                  : "bg-white border-[#d4d8e0] text-[#6c7688] hover:border-[#a0a8b4]",
                               )}
                               style={{ left: getPosition(dStart) + 1, width: Math.max(getWidth(dStart, dEnd) - 2, 8) }}
                             >
-                              <Percent className="w-2.5 h-2.5 shrink-0" />
+                              <Percent className={cn("w-2.5 h-2.5 shrink-0", discountSelected ? "text-[#3BABFD]" : "text-[#9aa0ac]")} />
                               {discount.percentage}% {isMarkup ? "markup" : "discount"}
                             </button>
                           )
@@ -6554,18 +6550,15 @@ function ContractConsole({
   const isEmpty = messages.length === 0 && !thinking
 
   return (
-    <div
-      className="flex flex-col h-full w-full bg-[#0a0a0a] text-white overflow-hidden"
-      style={{ fontFamily: '"SF Pro Display", -apple-system, BlinkMacSystemFont, sans-serif' }}
-    >
+    <div className="flex flex-col h-full w-full bg-white text-[#353A44] overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#181818] shrink-0">
-        <span className="text-[13px] font-medium text-[#d0d0d0] tracking-[-0.01em]">New conversation</span>
+      <div className="flex items-center justify-between px-5 h-12 border-b border-[#ebeef1] shrink-0">
+        <span className="text-sm font-semibold text-[#353A44]">New conversation</span>
         <div className="flex items-center gap-3">
           {messages.length > 0 && (
             <button
               onClick={() => setMessages([])}
-              className="text-[11px] text-[#404040] hover:text-[#666] transition-colors"
+              className="text-xs text-[#9aa0ac] hover:text-[#6c7688] transition-colors"
             >
               Clear
             </button>
@@ -6573,7 +6566,7 @@ function ContractConsole({
           {onDismiss && (
             <button
               onClick={onDismiss}
-              className="text-[11px] text-[#404040] hover:text-[#888] transition-colors flex items-center gap-1"
+              className="text-xs text-[#9aa0ac] hover:text-[#6c7688] transition-colors flex items-center gap-1"
               title="Hide console"
             >
               <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M1 1l8 8M9 1L1 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
@@ -6584,27 +6577,27 @@ function ContractConsole({
       </div>
 
       {/* Message stream */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-3">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 flex flex-col gap-3">
         {isEmpty && (
-          <div className="flex flex-col gap-6 mt-2">
-            <p className="text-[13px] text-[#555] leading-relaxed">
-              Describe the contract you need, upload an existing contract or pricing sheet, or start with a suggestion:
+          <div className="flex flex-col gap-4 mt-1">
+            <p className="text-xs text-[#9aa0ac] leading-relaxed">
+              Describe the contract you need, upload an existing document, or try a suggestion:
             </p>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-1.5">
               {STARTERS.map(s => (
                 <button
                   key={s}
                   onClick={() => void send(s)}
-                  className="text-left text-[12px] text-[#555] hover:text-[#999] py-1.5 px-3 rounded-lg border border-[#1a1a1a] hover:border-[#2a2a2a] transition-all"
+                  className="text-left text-xs text-[#596171] hover:text-[#353A44] py-2 px-3 rounded-md border border-[#ebeef1] hover:border-[#d4d8e0] bg-white hover:bg-[#f5f6f8] transition-all"
                 >
-                  <span className="text-[#533AFD] mr-1.5 font-mono">$</span>{s}
+                  {s}
                 </button>
               ))}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="text-left text-[12px] text-[#555] hover:text-[#999] py-1.5 px-3 rounded-lg border border-[#1a1a1a] hover:border-[#2a2a2a] transition-all flex items-center gap-2"
+                className="text-left text-xs text-[#596171] hover:text-[#353A44] py-2 px-3 rounded-md border border-[#ebeef1] hover:border-[#d4d8e0] bg-white hover:bg-[#f5f6f8] transition-all flex items-center gap-2"
               >
-                <Paperclip className="w-3 h-3 text-[#533AFD] shrink-0" />
+                <Paperclip className="w-3 h-3 text-[#9aa0ac] shrink-0" />
                 Upload a contract or pricing sheet
               </button>
             </div>
@@ -6614,38 +6607,38 @@ function ContractConsole({
         {messages.map((m, i) => {
           if (m.role === "action") {
             return (
-              <div key={i} className="flex items-center gap-2 py-0.5">
-                <div className="flex-1 h-px bg-[#1a1a1a]" />
-                <span className="text-[11px] text-[#333] whitespace-nowrap font-mono">{m.text}</span>
-                <div className="flex-1 h-px bg-[#1a1a1a]" />
+              <div key={i} className="flex items-center gap-2 py-1">
+                <div className="flex-1 h-px bg-[#ebeef1]" />
+                <span className="text-[10px] text-[#9aa0ac] whitespace-nowrap px-1">{m.text}</span>
+                <div className="flex-1 h-px bg-[#ebeef1]" />
               </div>
             )
           }
           return (
-            <div key={i} className="flex gap-3 text-[13px] leading-relaxed">
-              <span className={cn("shrink-0 font-mono pt-px", m.role === "user" ? "text-[#533AFD]" : "text-[#383838]")}>
-                {m.role === "user" ? "$" : "→"}
-              </span>
-              <span className={m.role === "user" ? "text-[#d0d0d0]" : "text-[#808080]"}>
-                {m.role === "user" && m.attachmentName && (
-                  <span className="inline-flex items-center gap-1 mr-2 px-1.5 py-0.5 rounded bg-[#1a1a1a] text-[11px] text-[#666]">
-                    <Paperclip className="w-2.5 h-2.5" />{m.attachmentName}
-                  </span>
-                )}
-                {m.text}
-              </span>
+            <div key={i} className="flex flex-col gap-1">
+              {m.role === "user" ? (
+                <div className="self-end max-w-[85%] bg-[#f5f6f8] rounded-xl px-3 py-2 text-sm text-[#353A44] leading-relaxed">
+                  {m.attachmentName && (
+                    <span className="inline-flex items-center gap-1 mr-2 px-1.5 py-0.5 rounded bg-[#ebeef1] text-[11px] text-[#6c7688]">
+                      <Paperclip className="w-2.5 h-2.5" />{m.attachmentName}
+                    </span>
+                  )}
+                  {m.text}
+                </div>
+              ) : (
+                <div className="self-start max-w-[90%] text-sm text-[#596171] leading-relaxed">
+                  {m.text}
+                </div>
+              )}
             </div>
           )
         })}
 
         {thinking && (
-          <div className="flex gap-3 text-[13px]">
-            <span className="text-[#383838] font-mono shrink-0 pt-px">→</span>
-            <span className="text-[#383838]">
-              <span className="animate-pulse">●</span>{" "}
-              <span className="animate-pulse" style={{ animationDelay: "150ms" }}>●</span>{" "}
-              <span className="animate-pulse" style={{ animationDelay: "300ms" }}>●</span>
-            </span>
+          <div className="flex gap-1.5 px-1 py-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#d4d8e0] animate-pulse" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#d4d8e0] animate-pulse" style={{ animationDelay: "150ms" }} />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#d4d8e0] animate-pulse" style={{ animationDelay: "300ms" }} />
           </div>
         )}
       </div>
@@ -6653,8 +6646,8 @@ function ContractConsole({
       {/* Pending attachment pill */}
       {pendingAttachment && (
         <div className="px-5 pt-2 shrink-0">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#1a1a1a] border border-[#2a2a2a] text-[11px] text-[#888]">
-            <Paperclip className="w-3 h-3 text-[#533AFD]" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#f5f6f8] border border-[#ebeef1] text-[11px] text-[#6c7688]">
+            <Paperclip className="w-3 h-3 text-[#9aa0ac]" />
             <span className="max-w-[180px] truncate">{pendingAttachment.filename}</span>
             <button
               onClick={() => setPendingAttachment(null)}
@@ -6667,11 +6660,11 @@ function ContractConsole({
       )}
 
       {/* Input */}
-      <div className="px-5 py-4 border-t border-[#181818] shrink-0">
-        <div className="flex items-center gap-2.5 bg-[#111] rounded-lg px-3.5 py-2.5 border border-[#1e1e1e] focus-within:border-[#2e2e2e] transition-colors">
+      <div className="px-5 py-4 border-t border-[#ebeef1] shrink-0">
+        <div className="flex items-center gap-2.5 bg-white rounded-lg px-3.5 py-2.5 border border-[#dfe1e6] focus-within:border-[#3BABFD] focus-within:ring-[3px] focus-within:ring-[#3BABFD]/10 transition-colors">
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="text-[#333] hover:text-[#555] transition-colors shrink-0"
+            className="text-[#9aa0ac] hover:text-[#6c7688] transition-colors shrink-0"
             title="Upload document"
           >
             <Paperclip className="w-3.5 h-3.5" />
@@ -6683,13 +6676,13 @@ function ContractConsole({
             onKeyDown={e => { if (e.key === "Enter") void send() }}
             placeholder="Ask anything"
             disabled={thinking}
-            className="bg-transparent text-[#d0d0d0] text-[13px] flex-1 outline-none placeholder:text-[#282828] disabled:opacity-40"
+            className="bg-transparent text-[#353A44] text-[13px] flex-1 outline-none placeholder:text-[#A0A8B4] disabled:opacity-40"
           />
           {(input.trim() || pendingAttachment) && (
             <button
               onClick={() => void send()}
               disabled={thinking}
-              className="text-[#533AFD] hover:text-[#7a6bff] transition-colors disabled:opacity-40"
+              className="text-[#9aa0ac] hover:text-[#3BABFD] transition-colors disabled:opacity-40"
             >
               <Send className="w-3.5 h-3.5" />
             </button>
@@ -7235,7 +7228,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   const [aiMode, setAiMode] = useState<AiMode>("chat")
 
   // Demo control panel (Cmd+/)
-  const [consolePosition, setConsolePosition] = useState<ConsolePosition>("inline")
+  const [consolePosition, setConsolePosition] = useState<ConsolePosition>("right")
   const [consoleHeight, setConsoleHeight] = useState(50)
   const [consoleWidth, setConsoleWidth] = useState(580)
   const [showControlPanel, setShowControlPanel] = useState(false)
@@ -7783,7 +7776,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
         <FormPanel
           selectedNodeId={selectedNodeId}
           selectedPlans={selectedPlans}
-          hideScheduleModule={hasScheduled || consolePosition === "inline"}
+          hideScheduleModule={hasScheduled || consolePosition === "inline" || consolePosition === "right"}
           contractId={contractId}
           customer={customer}
           currency={currency}
@@ -7877,7 +7870,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       {!showControlPanel && (
         consolePosition === "off" ? (
           <button
-            onClick={() => setConsolePosition("inline")}
+            onClick={() => setConsolePosition("right")}
             className="fixed bottom-4 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 backdrop-blur-sm text-white text-[11px] font-medium hover:bg-black transition-colors cursor-pointer select-none"
           >
             <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x="0.5" y="0.5" width="10" height="10" rx="2.5" stroke="white" strokeOpacity="0.7"/><path d="M2.5 4h6M2.5 5.5h4M2.5 7h4.5" stroke="white" strokeOpacity="0.7" strokeWidth="1.1" strokeLinecap="round"/></svg>
@@ -7932,7 +7925,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
       <div className="flex items-center gap-2">
         {consolePosition === "off" && (
           <button
-            onClick={() => setConsolePosition("inline")}
+            onClick={() => setConsolePosition("right")}
             className="px-3 py-1.5 rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-sm font-medium text-[#353A44] transition-colors flex items-center gap-1.5"
           >
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="0.5" y="0.5" width="11" height="11" rx="2.5" stroke="currentColor"/><path d="M3 4.5h6M3 6h4M3 7.5h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
@@ -8003,7 +7996,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
         <FormPanel
           selectedNodeId={selectedNodeId}
           selectedPlans={selectedPlans}
-          hideScheduleModule={hasScheduled || consolePosition === "inline"}
+          hideScheduleModule={hasScheduled || consolePosition === "inline" || consolePosition === "right"}
           contractId={contractId}
           customer={customer}
           currency={currency}
@@ -8157,12 +8150,12 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   // The main column: console replaces tree+form when console mode is active
   const mainColumn = consolePosition === "inline"
     ? inlineLeftColumn
-    : consolePosition !== "off" && consolePosition !== "over"
+    : consolePosition === "left" || consolePosition === "l+hdr"
       ? (
-        <div className="flex shrink-0 border-r border-[#1c1c1c] overflow-hidden relative" style={{ width: consoleWidth }}>
+        <div className="flex shrink-0 border-r border-[#ebeef1] overflow-hidden relative" style={{ width: consoleWidth }}>
           {consoleColumnEl}
           <div
-            className={`absolute top-0 bottom-0 w-1.5 cursor-col-resize z-50 group flex items-center justify-center ${consolePosition === "right" ? "left-0" : "right-0"}`}
+            className="absolute top-0 right-0 bottom-0 w-1.5 cursor-col-resize z-50 group flex items-center justify-center"
             onPointerDown={e => {
               e.currentTarget.setPointerCapture(e.pointerId)
               widthDragRef.current = { x: e.clientX, width: consoleWidth }
@@ -8170,12 +8163,11 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
             onPointerMove={e => {
               if (!widthDragRef.current) return
               const dx = e.clientX - widthDragRef.current.x
-              const delta = consolePosition === "right" ? -dx : dx
-              setConsoleWidth(Math.max(300, Math.min(900, widthDragRef.current.width + delta)))
+              setConsoleWidth(Math.max(300, Math.min(900, widthDragRef.current.width + dx)))
             }}
             onPointerUp={() => { widthDragRef.current = null }}
           >
-            <div className="w-0.5 h-8 rounded-full bg-[#2a2a2a] group-hover:bg-[#533AFD] transition-colors" />
+            <div className="w-0.5 h-8 rounded-full bg-[#d4d8e0] group-hover:bg-[#3BABFD] transition-colors" />
           </div>
         </div>
       )
@@ -8382,6 +8374,26 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
             {timeline}
           </div>
         </div>
+        {consolePosition === "right" && (
+          <div className="relative flex shrink-0 border-l border-[#ebeef1] overflow-hidden" style={{ width: consoleWidth }}>
+            {consoleColumnEl}
+            <div
+              className="absolute top-0 left-0 bottom-0 w-1.5 cursor-col-resize z-50 group flex items-center justify-center"
+              onPointerDown={e => {
+                e.currentTarget.setPointerCapture(e.pointerId)
+                widthDragRef.current = { x: e.clientX, width: consoleWidth }
+              }}
+              onPointerMove={e => {
+                if (!widthDragRef.current) return
+                const dx = e.clientX - widthDragRef.current.x
+                setConsoleWidth(Math.max(300, Math.min(900, widthDragRef.current.width - dx)))
+              }}
+              onPointerUp={() => { widthDragRef.current = null }}
+            >
+              <div className="w-0.5 h-8 rounded-full bg-[#d4d8e0] group-hover:bg-[#3BABFD] transition-colors" />
+            </div>
+          </div>
+        )}
       </div>
       {modals}
       {persistentOverlay}
