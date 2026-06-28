@@ -102,7 +102,7 @@ export default function ContractsV1Page() {
                   tabs={["Subscriptions", "Contracts", "Simulations", "Migrations"]}
                   tabContent={{
                     "Subscriptions": <SubscriptionsListView subscriptions={subscriptions} onEdit={() => {}} onDelete={(id) => { const next = subscriptions.filter((s) => s.id !== id); setSubscriptions(next); saveSubscriptions(next) }} />,
-                    "Contracts": contractsView === "list" ? <ContractsView embedded onSelectContract={(c: any) => { setSelectedContract(c); setContractsView("detail") }} onCreateContract={() => setContractsView("create")} /> : null,
+                    "Contracts": <ContractsView embedded onSelectContract={(c: any) => { setSelectedContract(c); setContractsView("detail") }} onCreateContract={() => setContractsView("create")} />,
                   }}
                   headerAction={(activeTab) => (
                     <button

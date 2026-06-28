@@ -4716,6 +4716,655 @@ function MilestoneModal({
   )
 }
 
+// =============================================================================
+// CREATE CONTRACT MODAL (M1 — modal over contracts list)
+// =============================================================================
+
+type CreateContractStep = "input" | "guided" | "parsing" | "confirm"
+
+interface ConfirmDetails {
+  customer: { name: string; email: string } | null
+  startDate: string
+  endDate: string
+  draftExpiry: string
+  currency: string
+  plans: SelectedPlanEntry[]
+  unknownProducts: { name: string; qty: number; price: number }[]
+  source: "input" | "guided"
+}
+
+function CreateContractModal({
+  contractId,
+  onContinue,
+  onClose,
+}: {
+  contractId: string
+  onContinue: (config: GetStartedConfig) => void
+  onClose: () => void
+}) {
+  const [step, setStep] = useState<CreateContractStep>("input")
+  const [inputText, setInputText] = useState("")
+  const [pendingFile, setPendingFile] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  // Guided step state
+  const [guidedCustomerQuery, setGuidedCustomerQuery] = useState("")
+  const [guidedCustomer, setGuidedCustomer] = useState<{ name: string; email: string } | null>(null)
+  const [showCustomerDrop, setShowCustomerDrop] = useState(false)
+  const [guidedStart, setGuidedStart] = useState("Jan 1, 2027")
+  const [guidedEnd, setGuidedEnd] = useState("Dec 31, 2027")
+  const [guidedExpiry, setGuidedExpiry] = useState(() => defaultDraftExpiry())
+  const [guidedCurrency, setGuidedCurrency] = useState("USD")
+  const [guidedPlans, setGuidedPlans] = useState<SelectedPlanEntry[]>([])
+  const [productQuery, setProductQuery] = useState("")
+  const [showProductDrop, setShowProductDrop] = useState(false)
+
+  // Confirm step state
+  const [confirm, setConfirm] = useState<ConfirmDetails | null>(null)
+
+  function parseTextToConfirm(text: string): ConfirmDetails {
+    const lower = text.toLowerCase()
+
+    // Customer
+    const foundCustomer = customerOptions.find(c =>
+      lower.includes(c.name.toLowerCase()) ||
+      lower.includes(c.name.split(" ")[0].toLowerCase())
+    )
+    const nameMatch = text.match(/\b(?:for|to|customer|client|named?)\s+([A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+)?)/)
+    const extractedName = nameMatch?.[1] ?? null
+    const customer = foundCustomer ?? (extractedName ? { name: extractedName, email: emailForName(extractedName) } : null)
+
+    // Start date + duration
+    const startDateStr = extractStartDateFromText(text)
+    const startDate = startDateStr ?? "Jan 1, 2027"
+    const durationMatch = text.match(/(\d+)[\s-]?year/)
+    const years = durationMatch ? parseInt(durationMatch[1]) : 1
+    const startD = new Date(startDate)
+    const endD = new Date(isNaN(startD.getTime()) ? "Jan 1, 2027" : startDate)
+    endD.setFullYear(endD.getFullYear() + years)
+    endD.setDate(endD.getDate() - 1)
+    const endDate = formatDateValue(endD)
+
+    // Quantity + price
+    const qtyMatch = text.match(/(\d+)\s*(?:seats?|users?|licenses?|units?)\b/i)
+    const qty = qtyMatch ? parseInt(qtyMatch[1]) : 1
+    const priceMatch = text.match(/\$(\d+(?:,\d{3})*(?:\.\d+)?)(?:\s*\/\s*(?:seat|mo|month|user|license|unit))?/)
+    const price = priceMatch ? parseFloat(priceMatch[1].replace(/,/g, "")) : null
+
+    // Match products from catalog
+    const matchedPlans: SelectedPlanEntry[] = []
+    const unknownProducts: { name: string; qty: number; price: number }[] = []
+
+    const mentioned = planCatalog.filter(p =>
+      lower.includes(p.name.toLowerCase()) ||
+      p.name.toLowerCase().split(" ").filter(w => w.length > 4).some(w => lower.includes(w))
+    )
+
+    if (mentioned.length > 0) {
+      mentioned.forEach(plan => {
+        const effectivePrice = price ?? plan.defaultMonthlyPrice
+        matchedPlans.push({
+          plan: { ...plan, defaultMonthlyPrice: effectivePrice },
+          startDate,
+          endDate,
+          quantity: qty,
+          priceOverrides: price !== null && price !== plan.defaultMonthlyPrice
+            ? [{ id: generateId(), startDate, endDate, price: String(price) }]
+            : [],
+          quantityUpdates: [],
+          discounts: [],
+        })
+      })
+    } else {
+      // Look for capitalized product-like phrases not in catalog
+      const productPhrase = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*(?:\s+(?:Seats?|Storage|Units?|Plan|Add-on|Support)))\b/)
+      if (productPhrase) {
+        unknownProducts.push({ name: productPhrase[1].trim(), qty, price: price ?? 0 })
+      }
+    }
+
+    return {
+      customer,
+      startDate,
+      endDate,
+      draftExpiry: defaultDraftExpiry(),
+      currency: "USD",
+      plans: matchedPlans,
+      unknownProducts,
+      source: "input",
+    }
+  }
+
+  function handleTextSubmit() {
+    const text = inputText.trim()
+    if (!text && !pendingFile) return
+    setStep("parsing")
+    window.setTimeout(() => {
+      if (pendingFile) {
+        setConfirm({
+          customer: customerOptions[0],
+          startDate: "Jan 1, 2027",
+          endDate: "Dec 31, 2027",
+          draftExpiry: defaultDraftExpiry(),
+          currency: "USD",
+          plans: buildDemoEntries("Jan 1, 2027"),
+          unknownProducts: [],
+          source: "input",
+        })
+      } else {
+        setConfirm(parseTextToConfirm(text))
+      }
+      setStep("confirm")
+    }, 1600)
+  }
+
+  function handleGuidedReview() {
+    const customer = guidedCustomer ?? (guidedCustomerQuery.trim() ? { name: guidedCustomerQuery.trim(), email: emailForName(guidedCustomerQuery.trim()) } : null)
+    // Sync plan dates to the guided term
+    const syncedPlans = guidedPlans.map(p => ({ ...p, startDate: guidedStart, endDate: guidedEnd }))
+    setConfirm({
+      customer,
+      startDate: guidedStart,
+      endDate: guidedEnd,
+      draftExpiry: guidedExpiry,
+      currency: guidedCurrency,
+      plans: syncedPlans,
+      unknownProducts: [],
+      source: "guided",
+    })
+    setStep("confirm")
+  }
+
+  function handleAddUnknownAsCustom(u: { name: string; qty: number; price: number }) {
+    if (!confirm) return
+    const plan = makeCustomPlan(u.name, u.price)
+    const newEntry: SelectedPlanEntry = {
+      plan,
+      startDate: confirm.startDate,
+      endDate: confirm.endDate,
+      quantity: u.qty,
+      priceOverrides: [],
+      quantityUpdates: [],
+      discounts: [],
+    }
+    setConfirm(prev => prev ? { ...prev, plans: [...prev.plans, newEntry], unknownProducts: prev.unknownProducts.filter(x => x.name !== u.name) } : prev)
+  }
+
+  function handleConfirmContinue() {
+    if (!confirm?.customer?.name) return
+    onContinue({
+      contractId,
+      customer: confirm.customer,
+      currency: confirm.currency,
+      draftExpiry: confirm.draftExpiry,
+      documentName: pendingFile,
+      plans: confirm.plans,
+      loadDemo: !!pendingFile,
+      startDate: pendingFile ? confirm.startDate : undefined,
+    })
+  }
+
+  function addGuidedPlan(plan: PlanTemplate) {
+    setGuidedPlans(prev =>
+      prev.some(p => p.plan.id === plan.id) ? prev :
+      [...prev, { plan, startDate: guidedStart, endDate: guidedEnd, quantity: 1, priceOverrides: [], quantityUpdates: [], discounts: [] }]
+    )
+    setProductQuery("")
+    setShowProductDrop(false)
+  }
+
+  const availableProducts = planCatalog.filter(p =>
+    !guidedPlans.some(gp => gp.plan.id === p.id) &&
+    (productQuery === "" || p.name.toLowerCase().includes(productQuery.toLowerCase()))
+  )
+
+  const canGuidedReview = (!!guidedCustomer || guidedCustomerQuery.trim().length > 1) && guidedPlans.length > 0
+
+  const backFromConfirm = () => setStep(confirm?.source === "guided" ? "guided" : "input")
+
+  return (
+    <>
+      {/* Dimmed blurred backdrop */}
+      <div className="fixed inset-0 z-[199] bg-black/50 backdrop-blur-sm" onClick={onClose} />
+
+      {/* Modal */}
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 pointer-events-none">
+        <div
+          className="pointer-events-auto w-full max-w-[520px] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+          style={{ maxHeight: "calc(100vh - 48px)" }}
+          onClick={e => { e.stopPropagation(); setShowCustomerDrop(false); setShowProductDrop(false) }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-6 pt-5 pb-4 shrink-0">
+            <div className="flex items-center gap-2">
+              {(step === "guided" || step === "confirm") && (
+                <button
+                  onClick={step === "confirm" ? backFromConfirm : () => setStep("input")}
+                  className="w-7 h-7 flex items-center justify-center rounded-md text-[#A0A8B4] hover:bg-[#f3f4f6] transition-colors -ml-1"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+              )}
+              <h2 className="text-base font-semibold text-[#353A44]">Create a new contract</h2>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded-md text-[#A0A8B4] hover:bg-[#f3f4f6] transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          {/* Body */}
+          <div className="flex-1 overflow-y-auto">
+
+            {/* ── Input step ── */}
+            {step === "input" && (
+              <div>
+                <p className="px-6 pb-4 text-sm text-[#6c7688] leading-relaxed">
+                  Describe your deal or upload a document to get started drafting this contract. You&apos;ll be able to configure more details in the next step.
+                </p>
+                {/* Gradient blob */}
+                <div
+                  className="mx-6 mb-4 relative overflow-hidden rounded-xl"
+                  style={{ height: 140, background: "linear-gradient(135deg, #f0eeff 0%, #fce8f8 45%, #e6f4ff 100%)" }}
+                >
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: "radial-gradient(ellipse at 25% 70%, rgba(139,92,246,0.3) 0%, transparent 55%), radial-gradient(ellipse at 75% 25%, rgba(236,72,153,0.2) 0%, transparent 55%), radial-gradient(ellipse at 55% 85%, rgba(59,171,253,0.25) 0%, transparent 50%)" }}
+                  />
+                  <div className="relative h-full flex items-center justify-center">
+                    <button
+                      onClick={e => { e.stopPropagation(); setStep("guided") }}
+                      className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 backdrop-blur-sm border border-white/70 text-sm font-medium text-[#353A44] shadow-sm hover:bg-white transition-all"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                      Help me get started
+                    </button>
+                  </div>
+                </div>
+                {/* Input bar */}
+                <div className="px-6 pb-6">
+                  <div
+                    className="flex items-end gap-2 bg-[#f9fafb] rounded-xl border border-[#ebeef1] px-3.5 py-3 focus-within:border-[#c0ccde] transition-colors"
+                    onClick={e => e.stopPropagation()}
+                  >
+                    <textarea
+                      className="flex-1 text-sm bg-transparent outline-none resize-none placeholder-[#A0A8B4] min-h-[44px] max-h-32 leading-relaxed text-[#353A44]"
+                      placeholder="Create a 2 year deal for Jane Doe starting Jan 1, 2028. Charge for 100 Enterprise Seats at $200/seat."
+                      value={inputText}
+                      onChange={e => setInputText(e.target.value)}
+                      onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleTextSubmit() } }}
+                      rows={2}
+                    />
+                    <div className="flex items-center gap-1.5 shrink-0 pb-0.5">
+                      {pendingFile ? (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#eef2ff] border border-[#d4d8ff] text-xs font-medium text-[#533AFD]">
+                          <FileText className="w-3 h-3 shrink-0" />
+                          <span className="max-w-[80px] truncate">{pendingFile}</span>
+                          <button onClick={() => setPendingFile(null)} className="text-[#533AFD]/50 hover:text-[#533AFD]">
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => fileRef.current?.click()}
+                          className="w-7 h-7 flex items-center justify-center rounded-md text-[#A0A8B4] hover:text-[#353A44] hover:bg-[#f0f2f5] transition-colors"
+                          title="Attach document"
+                        >
+                          <Paperclip className="w-4 h-4" />
+                        </button>
+                      )}
+                      <button
+                        onClick={handleTextSubmit}
+                        disabled={!inputText.trim() && !pendingFile}
+                        className="w-7 h-7 flex items-center justify-center rounded-full bg-[#353A44] text-white disabled:opacity-30 disabled:cursor-not-allowed hover:bg-[#2a2f38] transition-colors"
+                      >
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.docx,.doc,.txt"
+                    onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (f) { setPendingFile(f.name); e.target.value = "" }
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* ── Guided step ── */}
+            {step === "guided" && (
+              <div className="px-6 pb-6 space-y-5" onClick={e => e.stopPropagation()}>
+                <p className="text-sm text-[#6c7688]">Fill in the key details and we&apos;ll set up your contract.</p>
+
+                {/* Customer */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Customer</label>
+                  <div className="relative">
+                    <input
+                      className="w-full h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors placeholder-[#A0A8B4]"
+                      placeholder="Search or type customer name"
+                      value={guidedCustomer ? guidedCustomer.name : guidedCustomerQuery}
+                      onChange={e => { setGuidedCustomer(null); setGuidedCustomerQuery(e.target.value); setShowCustomerDrop(true) }}
+                      onFocus={e => { e.stopPropagation(); setShowCustomerDrop(true) }}
+                      onClick={e => e.stopPropagation()}
+                    />
+                    {showCustomerDrop && (
+                      <div className="absolute z-20 top-full mt-1 w-full bg-white rounded-lg border border-[#ebeef1] shadow-lg overflow-hidden">
+                        {customerOptions
+                          .filter(c => !guidedCustomerQuery || c.name.toLowerCase().includes(guidedCustomerQuery.toLowerCase()))
+                          .map(c => (
+                            <button
+                              key={c.email}
+                              className="w-full px-3 py-2.5 text-left hover:bg-[#f5f6f8] transition-colors"
+                              onClick={e => { e.stopPropagation(); setGuidedCustomer(c); setGuidedCustomerQuery(""); setShowCustomerDrop(false) }}
+                            >
+                              <div className="text-sm font-medium text-[#353A44]">{c.name}</div>
+                              <div className="text-xs text-[#6c7688]">{c.email}</div>
+                            </button>
+                          ))}
+                        {guidedCustomerQuery && !customerOptions.some(c => c.name.toLowerCase() === guidedCustomerQuery.toLowerCase()) && (
+                          <button
+                            className="w-full px-3 py-2.5 text-left hover:bg-[#f5f6f8] border-t border-[#ebeef1] transition-colors"
+                            onClick={e => { e.stopPropagation(); setGuidedCustomer({ name: guidedCustomerQuery, email: emailForName(guidedCustomerQuery) }); setGuidedCustomerQuery(""); setShowCustomerDrop(false) }}
+                          >
+                            <div className="text-sm text-[#533AFD] font-medium">+ New customer &quot;{guidedCustomerQuery}&quot;</div>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Term */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Contract term</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      className="flex-1 h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                      value={toIso(guidedStart)}
+                      onChange={e => setGuidedStart(formatDateValue(new Date(e.target.value + "T00:00:00")))}
+                    />
+                    <span className="text-[#A0A8B4] text-xs shrink-0">→</span>
+                    <input
+                      type="date"
+                      className="flex-1 h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                      value={toIso(guidedEnd)}
+                      onChange={e => setGuidedEnd(formatDateValue(new Date(e.target.value + "T00:00:00")))}
+                    />
+                  </div>
+                </div>
+
+                {/* Currency */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Currency</label>
+                  <select
+                    className="h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors w-32"
+                    value={guidedCurrency}
+                    onChange={e => setGuidedCurrency(e.target.value)}
+                  >
+                    {["USD", "EUR", "GBP", "AUD", "CAD", "JPY"].map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                {/* Products */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Products</label>
+                  {guidedPlans.length > 0 && (
+                    <div className="space-y-2 mb-2">
+                      {guidedPlans.map(entry => (
+                        <div key={entry.plan.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-[#ebeef1] bg-[#fafbfc]">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-[#353A44] truncate">{entry.plan.name}</div>
+                            <div className="text-xs text-[#6c7688]">${entry.plan.defaultMonthlyPrice}/mo</div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-[#6c7688]">Qty</span>
+                            <input
+                              type="number"
+                              min={1}
+                              className="w-16 h-7 px-2 text-sm text-center rounded border border-[#d8dee4] outline-none focus:border-[#3BABFD] bg-white"
+                              value={entry.quantity}
+                              onChange={e => setGuidedPlans(prev => prev.map(p => p.plan.id === entry.plan.id ? { ...p, quantity: Math.max(1, parseInt(e.target.value) || 1) } : p))}
+                            />
+                          </div>
+                          <button
+                            onClick={() => setGuidedPlans(prev => prev.filter(p => p.plan.id !== entry.plan.id))}
+                            className="text-[#A0A8B4] hover:text-[#e11d48] transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="relative">
+                    <div
+                      className="flex items-center gap-2 h-9 px-3 rounded-lg border border-dashed border-[#d8dee4] bg-white cursor-text"
+                      onClick={e => { e.stopPropagation(); setShowProductDrop(true) }}
+                    >
+                      <Plus className="w-3.5 h-3.5 text-[#A0A8B4] shrink-0" />
+                      <input
+                        className="flex-1 text-sm text-[#353A44] outline-none bg-transparent placeholder-[#A0A8B4]"
+                        placeholder="Add a product from catalog"
+                        value={productQuery}
+                        onChange={e => { setProductQuery(e.target.value); setShowProductDrop(true) }}
+                        onFocus={e => { e.stopPropagation(); setShowProductDrop(true) }}
+                        onClick={e => e.stopPropagation()}
+                      />
+                    </div>
+                    {showProductDrop && (availableProducts.length > 0 || productQuery) && (
+                      <div className="absolute z-20 top-full mt-1 w-full bg-white rounded-lg border border-[#ebeef1] shadow-lg overflow-hidden max-h-44 overflow-y-auto">
+                        {availableProducts.map(p => (
+                          <button
+                            key={p.id}
+                            className="w-full px-3 py-2.5 text-left hover:bg-[#f5f6f8] transition-colors"
+                            onClick={e => { e.stopPropagation(); addGuidedPlan(p) }}
+                          >
+                            <div className="text-sm font-medium text-[#353A44]">{p.name}</div>
+                            <div className="text-xs text-[#6c7688]">${p.defaultMonthlyPrice}/mo · {p.description}</div>
+                          </button>
+                        ))}
+                        {productQuery && availableProducts.length === 0 && (
+                          <div className="px-3 py-3 flex items-center gap-2">
+                            <AlertTriangle className="w-3.5 h-3.5 text-[#f59e0b] shrink-0" />
+                            <span className="text-sm text-[#6c7688] flex-1">&quot;{productQuery}&quot; isn&apos;t in your catalog</span>
+                            <button
+                              className="text-xs font-medium text-[#533AFD] hover:underline whitespace-nowrap"
+                              onClick={e => { e.stopPropagation(); addGuidedPlan(makeCustomPlan(productQuery, 0)) }}
+                            >
+                              + Add as custom
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Draft expires */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Draft expires</label>
+                  <input
+                    type="date"
+                    className="h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                    value={toIso(guidedExpiry)}
+                    onChange={e => setGuidedExpiry(formatDateValue(new Date(e.target.value + "T00:00:00")))}
+                  />
+                </div>
+
+                <button
+                  onClick={handleGuidedReview}
+                  disabled={!canGuidedReview}
+                  className="w-full h-10 rounded-lg bg-[#353A44] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#2a2f38] transition-colors flex items-center justify-center gap-2"
+                >
+                  Review details
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
+            {/* ── Parsing step ── */}
+            {step === "parsing" && (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <Loader2 className="w-5 h-5 text-[#533AFD] animate-spin" />
+                <p className="text-sm text-[#6c7688]">
+                  {pendingFile ? "Reading your document…" : "Extracting contract details…"}
+                </p>
+              </div>
+            )}
+
+            {/* ── Confirm step ── */}
+            {step === "confirm" && confirm && (
+              <div className="px-6 pb-6 space-y-5" onClick={e => e.stopPropagation()}>
+                <p className="text-sm text-[#6c7688]">Review the details below before opening the editor.</p>
+
+                {/* Unknown products warning */}
+                {confirm.unknownProducts.length > 0 && (
+                  <div className="rounded-lg border border-[#fbd992] bg-[#fffbf0] p-3.5 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-[#92400e]">
+                      <AlertTriangle className="w-3.5 h-3.5 text-[#f59e0b] shrink-0" />
+                      Some products couldn&apos;t be matched to your catalog
+                    </div>
+                    {confirm.unknownProducts.map(u => (
+                      <div key={u.name} className="flex items-center justify-between gap-3">
+                        <span className="text-sm text-[#353A44] truncate italic">&quot;{u.name}&quot;</span>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <button onClick={() => handleAddUnknownAsCustom(u)} className="text-xs font-medium text-[#533AFD] hover:underline">
+                            + Add as custom product
+                          </button>
+                          <button onClick={() => setConfirm(prev => prev ? { ...prev, unknownProducts: prev.unknownProducts.filter(x => x.name !== u.name) } : prev)} className="text-xs text-[#A0A8B4] hover:text-[#6c7688]">
+                            Skip
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Customer */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Customer</label>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                      placeholder="Name"
+                      value={confirm.customer?.name ?? ""}
+                      onChange={e => setConfirm(prev => prev ? { ...prev, customer: { name: e.target.value, email: prev.customer?.email ?? emailForName(e.target.value) } } : prev)}
+                    />
+                    <input
+                      className="flex-1 h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                      placeholder="Email"
+                      value={confirm.customer?.email ?? ""}
+                      onChange={e => setConfirm(prev => prev ? { ...prev, customer: { name: prev.customer?.name ?? "", email: e.target.value } } : prev)}
+                    />
+                  </div>
+                </div>
+
+                {/* Term */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Contract term</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="date"
+                      className="flex-1 h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                      value={toIso(confirm.startDate)}
+                      onChange={e => setConfirm(prev => prev ? { ...prev, startDate: formatDateValue(new Date(e.target.value + "T00:00:00")) } : prev)}
+                    />
+                    <span className="text-[#A0A8B4] text-xs shrink-0">→</span>
+                    <input
+                      type="date"
+                      className="flex-1 h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                      value={toIso(confirm.endDate)}
+                      onChange={e => setConfirm(prev => prev ? { ...prev, endDate: formatDateValue(new Date(e.target.value + "T00:00:00")) } : prev)}
+                    />
+                  </div>
+                </div>
+
+                {/* Currency */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Currency</label>
+                  <select
+                    className="h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors w-32"
+                    value={confirm.currency}
+                    onChange={e => setConfirm(prev => prev ? { ...prev, currency: e.target.value } : prev)}
+                  >
+                    {["USD", "EUR", "GBP", "AUD", "CAD", "JPY"].map(c => <option key={c}>{c}</option>)}
+                  </select>
+                </div>
+
+                {/* Products */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Products</label>
+                  {confirm.plans.length === 0 ? (
+                    <div className="text-sm text-[#A0A8B4] py-4 text-center border border-dashed border-[#d8dee4] rounded-lg">
+                      No products — add one above or go back to edit
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {confirm.plans.map(entry => (
+                        <div key={entry.plan.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg border border-[#ebeef1] bg-[#fafbfc]">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium text-[#353A44] truncate">{entry.plan.name}</div>
+                            <div className="text-xs text-[#6c7688]">${entry.plan.defaultMonthlyPrice}/mo</div>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-[#6c7688]">Qty</span>
+                            <input
+                              type="number"
+                              min={1}
+                              className="w-16 h-7 px-2 text-sm text-center rounded border border-[#d8dee4] outline-none focus:border-[#3BABFD] bg-white"
+                              value={entry.quantity}
+                              onChange={e => setConfirm(prev => prev ? { ...prev, plans: prev.plans.map(p => p.plan.id === entry.plan.id ? { ...p, quantity: Math.max(1, parseInt(e.target.value) || 1) } : p) } : prev)}
+                            />
+                          </div>
+                          <button
+                            onClick={() => setConfirm(prev => prev ? { ...prev, plans: prev.plans.filter(p => p.plan.id !== entry.plan.id) } : prev)}
+                            className="text-[#A0A8B4] hover:text-[#e11d48] transition-colors"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Draft expires */}
+                <div>
+                  <label className="block text-xs font-medium text-[#6c7688] mb-1.5">Draft expires</label>
+                  <input
+                    type="date"
+                    className="h-9 px-3 rounded-lg border border-[#d8dee4] text-sm text-[#353A44] bg-white outline-none focus:border-[#3BABFD] transition-colors"
+                    value={toIso(confirm.draftExpiry)}
+                    onChange={e => setConfirm(prev => prev ? { ...prev, draftExpiry: formatDateValue(new Date(e.target.value + "T00:00:00")) } : prev)}
+                  />
+                </div>
+
+                <button
+                  onClick={handleConfirmContinue}
+                  disabled={!confirm.customer?.name}
+                  className="w-full h-10 rounded-lg bg-[#533AFD] text-white text-sm font-medium disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#4730E0] transition-colors flex items-center justify-center gap-2"
+                >
+                  Start configuring
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
 function GetStartedScreen({
   contractId,
   onDiscard,
@@ -8261,43 +8910,36 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   // Show get-started screen only on M1+ and only when no contract is loaded yet
   if (!config && effectiveConsole === "off" && milestoneGetStartedEnabled) {
     return (
-      <div className="fixed inset-0 z-50 flex flex-col bg-white">
-        {/* Milestone selector persists on the get-started screen */}
-        <div className="flex items-center h-14 px-5 border-b border-[#ebeef1] shrink-0 gap-3">
-          <span className="text-sm font-semibold text-[#353A44]">Contract {contractId}</span>
-          <div className="flex items-center gap-1.5">
-            <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-[#f5f6f8] border border-[#ebeef1]">
-              {([0, 1, 2, 3] as const).map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setMilestone(m)}
-                  className={cn(
-                    "h-6 px-2.5 rounded text-xs font-medium transition-colors",
-                    milestone === m
-                      ? "bg-[#353A44] text-white shadow-sm"
-                      : "text-[#6c7688] hover:text-[#353A44]",
-                  )}
-                >
-                  M{m}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowMilestoneModal(true)}
-              className="h-7 w-7 flex items-center justify-center rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-[#6c7688] hover:text-[#353A44] transition-colors"
-              title="View milestone progression"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-            </button>
+      <>
+        {/* Milestone selector floats above the modal backdrop */}
+        <div className="fixed top-4 left-4 z-[210] flex items-center gap-1.5">
+          <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-white border border-[#ebeef1] shadow-sm">
+            {([0, 1, 2, 3] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMilestone(m)}
+                className={cn(
+                  "h-6 px-2.5 rounded text-xs font-medium transition-colors",
+                  milestone === m ? "bg-[#353A44] text-white shadow-sm" : "text-[#6c7688] hover:text-[#353A44]",
+                )}
+              >
+                M{m}
+              </button>
+            ))}
           </div>
+          <button
+            onClick={() => setShowMilestoneModal(true)}
+            className="h-7 w-7 flex items-center justify-center rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-[#6c7688] hover:text-[#353A44] transition-colors shadow-sm"
+            title="View milestone progression"
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+          </button>
         </div>
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <GetStartedScreen
-            contractId={contractId}
-            onContinue={handleContinue}
-            onDiscard={onDiscard}
-          />
-        </div>
+        <CreateContractModal
+          contractId={contractId}
+          onContinue={handleContinue}
+          onClose={onDiscard}
+        />
         {showMilestoneModal && (
           <MilestoneModal
             currentMilestone={milestone}
@@ -8306,7 +8948,7 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
           />
         )}
         {persistentOverlay}
-      </div>
+      </>
     )
   }
 
