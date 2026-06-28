@@ -8074,14 +8074,52 @@ export default function NewContractWizardV4({ onDiscard, onGetStarted, initialCo
   // Show get-started screen only on M1+ and only when no contract is loaded yet
   if (!config && effectiveConsole === "off" && milestoneGetStartedEnabled) {
     return (
-      <>
-        <GetStartedScreen
-          contractId={contractId}
-          onContinue={handleContinue}
-          onDiscard={onDiscard}
-        />
+      <div className="fixed inset-0 z-50 flex flex-col bg-white">
+        {/* Milestone selector persists on the get-started screen */}
+        <div className="flex items-center h-14 px-5 border-b border-[#ebeef1] shrink-0 gap-3">
+          <span className="text-sm font-semibold text-[#353A44]">Contract {contractId}</span>
+          <div className="flex items-center gap-1.5">
+            <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-[#f5f6f8] border border-[#ebeef1]">
+              {([0, 1, 2, 3] as const).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMilestone(m)}
+                  className={cn(
+                    "h-6 px-2.5 rounded text-xs font-medium transition-colors",
+                    milestone === m
+                      ? "bg-[#353A44] text-white shadow-sm"
+                      : "text-[#6c7688] hover:text-[#353A44]",
+                  )}
+                >
+                  M{m}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setShowMilestoneModal(true)}
+              className="h-7 w-7 flex items-center justify-center rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-[#6c7688] hover:text-[#353A44] transition-colors"
+              title="View milestone progression"
+            >
+              <LayoutGrid className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <GetStartedScreen
+            contractId={contractId}
+            onContinue={handleContinue}
+            onDiscard={onDiscard}
+          />
+        </div>
+        {showMilestoneModal && (
+          <MilestoneModal
+            currentMilestone={milestone}
+            onSelect={setMilestone}
+            onClose={() => setShowMilestoneModal(false)}
+          />
+        )}
         {persistentOverlay}
-      </>
+      </div>
     )
   }
 
