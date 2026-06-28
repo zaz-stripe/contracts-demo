@@ -2388,10 +2388,18 @@ function TimelineVisualization({
   quantityFocusedPlanId?: string | null
   timelineEnabled?: boolean
 }) {
-  const [viewMode, setViewMode] = useState<"timeline" | "pdf">("timeline")
+  const [viewMode, setViewMode] = useState<"timeline" | "pdf" | "invoice">("timeline")
   useEffect(() => {
-    if (timelineEnabled === false) setViewMode("pdf")
+    if (!timelineEnabled) setViewMode(prev => prev === "timeline" ? "pdf" : prev)
   }, [timelineEnabled])
+
+  // Invoice month navigation (used when viewMode === "invoice")
+  const [invoiceMonth, setInvoiceMonth] = useState<Date>(() => {
+    const dates = selectedPlans.map(p => new Date(p.startDate)).filter(d => !isNaN(d.getTime()))
+    if (dates.length === 0) return new Date()
+    const earliest = new Date(Math.min(...dates.map(d => d.getTime())))
+    return new Date(earliest.getFullYear(), earliest.getMonth(), 1)
+  })
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(() =>
     new Set(selectedPlans.map(e => e.plan.id))
   )
@@ -2734,6 +2742,20 @@ function TimelineVisualization({
             <FileText className="w-3.5 h-3.5" />
             Agreement PDF
           </button>
+          {timelineEnabled === false && (
+            <button
+              onClick={() => setViewMode("invoice")}
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 h-7 rounded text-xs font-medium transition-colors",
+                viewMode === "invoice"
+                  ? "bg-white text-[#353A44] shadow-sm"
+                  : "text-[#6c7688] hover:text-[#353A44]",
+              )}
+            >
+              <Receipt className="w-3.5 h-3.5" />
+              Invoice
+            </button>
+          )}
         </div>
       </div>
 
@@ -2748,6 +2770,14 @@ function TimelineVisualization({
             billingMethod={billingMethod}
           />
         </div>
+      ) : viewMode === "invoice" ? (
+        <InvoicePreviewPanel
+          invoiceMonth={invoiceMonth}
+          onChangeMonth={setInvoiceMonth}
+          selectedPlans={selectedPlans}
+          customer={customer}
+          currency={currency}
+        />
       ) : selectedPlans.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <p className="text-sm text-[#A0A8B4]">Add a pricing plan to see the timeline</p>
@@ -3827,6 +3857,162 @@ function ScheduleModal({
           <button onClick={handleSubmit} className="px-4 py-2 rounded-md bg-[#533AFD] hover:bg-[#4730E0] text-sm font-medium text-white transition-colors">
             Add schedule
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// INVOICE PREVIEW PANEL (inline, used in TimelineVisualization for M0–M2)
+// =============================================================================
+function InvoicePreviewPanel({
+  invoiceMonth,
+  onChangeMonth,
+  selectedPlans,
+  customer,
+  currency,
+}: {
+  invoiceMonth: Date
+  onChangeMonth: (d: Date) => void
+  selectedPlans: SelectedPlanEntry[]
+  customer: { name: string; email: string } | null
+  currency?: string
+}) {
+  const currencyCode = currency || "USD"
+  const parsePrice = (p: string | number) =>
+    typeof p === "number" ? p : parseFloat(String(p).replace(/[^0-9.]/g, "")) || 0
+
+  const asOf = new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth() + 1, 0)
+  const monthStart = new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth(), 1)
+  const within = (start: Date, end: Date) =>
+    !isNaN(start.getTime()) && !isNaN(end.getTime()) && start <= asOf && end >= monthStart
+
+  const lineItems = selectedPlans
+    .map(entry => {
+      const active = within(new Date(entry.startDate), new Date(entry.endDate))
+      if (!active) return null
+      let unitPrice = entry.plan.defaultMonthlyPrice
+      let priceIsOverridden = false
+      entry.priceOverrides.forEach(o => {
+        if (within(new Date(o.startDate), new Date(o.endDate))) {
+          unitPrice = parsePrice(o.price); priceIsOverridden = true
+        }
+      })
+      let quantity = entry.quantity
+      ;[...entry.quantityUpdates]
+        .filter(q => !isNaN(new Date(q.effectiveDate).getTime()))
+        .sort((a, b) => new Date(a.effectiveDate).getTime() - new Date(b.effectiveDate).getTime())
+        .forEach(q => { if (new Date(q.effectiveDate) <= asOf) quantity = q.quantity })
+      let discountPct = 0
+      entry.discounts.forEach(d => {
+        if (within(new Date(d.startDate), new Date(d.endDate))) discountPct += d.percentage
+      })
+      discountPct = Math.min(discountPct, 100)
+      const subtotal = unitPrice * quantity
+      const discountAmount = subtotal * (discountPct / 100)
+      return { id: entry.plan.id, name: entry.plan.name, unitPrice, priceIsOverridden, quantity, discountPct, discountAmount, amount: subtotal - discountAmount }
+    })
+    .filter((l): l is NonNullable<typeof l> => l !== null)
+
+  const subtotalAll = lineItems.reduce((sum, l) => sum + l.unitPrice * l.quantity, 0)
+  const discountAll = lineItems.reduce((sum, l) => sum + l.discountAmount, 0)
+  const total = subtotalAll - discountAll
+  const monthLabel = invoiceMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })
+
+  const prevMonth = () => onChangeMonth(new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth() - 1, 1))
+  const nextMonth = () => onChangeMonth(new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth() + 1, 1))
+
+  return (
+    <div className="flex-1 min-h-0 overflow-auto bg-[#f5f6f8] p-6 flex justify-center">
+      <div className="w-full max-w-lg">
+        {/* Month nav */}
+        <div className="flex items-center justify-between mb-4">
+          <button onClick={prevMonth} className="w-8 h-8 flex items-center justify-center rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-[#6c7688] transition-colors">
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="text-sm font-semibold text-[#353A44]">{monthLabel}</span>
+          <button onClick={nextMonth} className="w-8 h-8 flex items-center justify-center rounded-md border border-[#d8dee4] bg-white hover:bg-[#f5f6f8] text-[#6c7688] transition-colors">
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Invoice card */}
+        <div className="bg-white rounded-xl border border-[#ebeef1] overflow-hidden shadow-sm">
+          {/* Invoice header */}
+          <div className="bg-[#f5f6f8] border-b border-[#ebeef1] px-5 py-4 flex items-start justify-between">
+            <div>
+              <div className="text-sm font-semibold text-[#353A44]">Invoice</div>
+              <div className="text-xs text-[#6c7688] mt-0.5">{monthLabel}</div>
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] text-[#A0A8B4] mb-0.5">Invoice #</div>
+              <div className="text-xs font-medium text-[#353A44]">INV-{invoiceMonth.getFullYear()}{String(invoiceMonth.getMonth() + 1).padStart(2, "0")}</div>
+            </div>
+          </div>
+
+          {/* Bill to */}
+          <div className="px-5 py-4 border-b border-[#ebeef1]">
+            <div className="text-[10px] text-[#A0A8B4] mb-1 uppercase tracking-wide">Bill to</div>
+            <div className="text-sm font-medium text-[#353A44]">{customer?.name || "Customer"}</div>
+            <div className="text-xs text-[#6c7688]">{customer?.email || "customer@example.com"}</div>
+          </div>
+
+          {/* Line items */}
+          <div className="px-5 py-4">
+            {lineItems.length === 0 ? (
+              <p className="text-sm text-[#A0A8B4] py-3 text-center">No plans are active during {monthLabel}.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-[10px] text-[#A0A8B4] uppercase tracking-wide">
+                    <th className="text-left pb-3">Description</th>
+                    <th className="text-right pb-3">Unit price</th>
+                    <th className="text-right pb-3">Qty</th>
+                    <th className="text-right pb-3">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#f0f2f5]">
+                  {lineItems.map(l => (
+                    <tr key={l.id} className="align-top">
+                      <td className="py-2.5 text-[#353A44]">
+                        {l.name}
+                        {l.priceIsOverridden && (
+                          <span className="ml-1.5 inline-block text-[10px] text-[#6c7688] border border-[#d8dee4] rounded px-1 py-px align-middle">custom price</span>
+                        )}
+                        {l.discountPct > 0 && (
+                          <div className="text-[11px] text-[#6c7688] mt-0.5">{l.discountPct}% discount</div>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-right text-[#6c7688] whitespace-nowrap">${l.unitPrice.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                      <td className="py-2.5 text-right text-[#6c7688]">{l.quantity}</td>
+                      <td className="py-2.5 text-right text-[#353A44] font-medium whitespace-nowrap">${l.amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Totals */}
+          {lineItems.length > 0 && (
+            <div className="px-5 py-4 border-t border-[#ebeef1] bg-[#fafbfc] space-y-2">
+              <div className="flex items-center justify-between text-sm text-[#6c7688]">
+                <span>Subtotal</span>
+                <span>${subtotalAll.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+              </div>
+              {discountAll > 0 && (
+                <div className="flex items-center justify-between text-sm text-[#6c7688]">
+                  <span>Discounts</span>
+                  <span className="text-[#22c55e]">−${discountAll.toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
+              <div className="flex items-center justify-between pt-2 border-t border-[#ebeef1]">
+                <span className="text-sm font-semibold text-[#353A44]">Total due</span>
+                <span className="text-base font-semibold text-[#353A44]">${total.toLocaleString("en-US", { minimumFractionDigits: 2 })} {currencyCode}</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
