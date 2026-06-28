@@ -4472,59 +4472,61 @@ function MilestoneModal({
   onClose: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl border border-[#ebeef1] w-full max-w-3xl mx-4 p-6">
-        <div className="flex items-start justify-between mb-5">
+    <>
+      <div className="fixed inset-0 z-[199] bg-black/40 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-10 z-[200] bg-white rounded-2xl shadow-2xl border border-[#ebeef1] flex flex-col overflow-hidden">
+        <div className="flex items-start justify-between px-8 py-6 border-b border-[#ebeef1] shrink-0">
           <div>
-            <h2 className="text-base font-semibold text-[#353A44]">Editor milestones</h2>
-            <p className="text-xs text-[#6c7688] mt-0.5">Click a milestone to switch the active build state</p>
+            <h2 className="text-lg font-semibold text-[#353A44]">Editor milestones</h2>
+            <p className="text-sm text-[#6c7688] mt-0.5">Click a milestone to switch the active build state</p>
           </div>
-          <button onClick={onClose} className="text-[#9aa0ac] hover:text-[#353A44] transition-colors mt-0.5">
-            <X className="w-4 h-4" />
+          <button onClick={onClose} className="text-[#9aa0ac] hover:text-[#353A44] transition-colors">
+            <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="grid grid-cols-4 gap-3">
-          {MILESTONE_INFO.map((m) => {
-            const isActive = m.id === currentMilestone
-            return (
-              <button
-                key={m.id}
-                onClick={() => { onSelect(m.id); onClose() }}
-                className={cn(
-                  "flex flex-col rounded-xl border p-3 text-left transition-all",
-                  isActive
-                    ? "border-[#3BABFD] bg-[#f0f8ff] ring-2 ring-[#3BABFD]/20"
-                    : "border-[#e8eaed] bg-white hover:border-[#3BABFD]/50 hover:bg-[#f8fbff]"
-                )}
-              >
-                <div className="w-full aspect-[8/5] mb-3 rounded-lg overflow-hidden border border-[#e8eaed]">
-                  {m.id === 0 && <ThumbnailM0 />}
-                  {m.id === 1 && <ThumbnailM1 />}
-                  {m.id === 2 && <ThumbnailM2 />}
-                  {m.id === 3 && <ThumbnailM3 />}
-                </div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className={cn("text-xs font-semibold", isActive ? "text-[#3BABFD]" : "text-[#353A44]")}>
-                    {m.label}
-                  </span>
-                  {isActive && (
-                    <span className="w-4 h-4 rounded-full bg-[#3BABFD] flex items-center justify-center">
-                      <Check className="w-2.5 h-2.5 text-white" />
-                    </span>
+        <div className="flex-1 overflow-auto p-8">
+          <div className="grid grid-cols-4 gap-6 h-full">
+            {MILESTONE_INFO.map((m) => {
+              const isActive = m.id === currentMilestone
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => { onSelect(m.id); onClose() }}
+                  className={cn(
+                    "flex flex-col rounded-2xl border p-5 text-left transition-all",
+                    isActive
+                      ? "border-[#3BABFD] bg-[#f0f8ff] ring-2 ring-[#3BABFD]/20"
+                      : "border-[#e8eaed] bg-white hover:border-[#3BABFD]/50 hover:bg-[#f8fbff]"
                   )}
-                </div>
-                <p className="text-[11px] font-semibold text-[#353A44] mb-1">{m.title}</p>
-                <p className="text-[10px] text-[#6c7688] leading-relaxed">{m.description}</p>
-                <div className="mt-2 pt-2 border-t border-[#e8eaed]">
-                  <span className="text-[10px] font-medium text-[#3BABFD]">+ {m.netNew}</span>
-                </div>
-              </button>
-            )
-          })}
+                >
+                  <div className="w-full aspect-[8/5] mb-5 rounded-xl overflow-hidden border border-[#e8eaed]">
+                    {m.id === 0 && <ThumbnailM0 />}
+                    {m.id === 1 && <ThumbnailM1 />}
+                    {m.id === 2 && <ThumbnailM2 />}
+                    {m.id === 3 && <ThumbnailM3 />}
+                  </div>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={cn("text-sm font-semibold", isActive ? "text-[#3BABFD]" : "text-[#353A44]")}>
+                      {m.label}
+                    </span>
+                    {isActive && (
+                      <span className="w-5 h-5 rounded-full bg-[#3BABFD] flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-semibold text-[#353A44] mb-1.5">{m.title}</p>
+                  <p className="text-xs text-[#6c7688] leading-relaxed flex-1">{m.description}</p>
+                  <div className="mt-4 pt-4 border-t border-[#e8eaed]">
+                    <span className="text-xs font-medium text-[#3BABFD]">+ {m.netNew}</span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   )
 }
 
