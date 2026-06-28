@@ -2760,7 +2760,7 @@ function TimelineVisualization({
       </div>
 
       {viewMode === "pdf" ? (
-        <div className="flex-1 min-h-0 overflow-auto p-4">
+        <div className="flex-1 min-h-0 overflow-auto bg-[#fbfbfc] p-4">
           <ServiceAgreementPdf
             contractId={contractId}
             customer={customer}
@@ -3924,7 +3924,7 @@ function InvoicePreviewPanel({
   const nextMonth = () => onChangeMonth(new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth() + 1, 1))
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto p-6 flex justify-center">
+    <div className="flex-1 min-h-0 overflow-auto bg-[#fbfbfc] p-6 flex justify-center">
       <div className="w-full max-w-lg">
         {/* Month nav */}
         <div className="flex items-center justify-between mb-4">
