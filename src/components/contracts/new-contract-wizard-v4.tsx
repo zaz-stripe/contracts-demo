@@ -6635,7 +6635,6 @@ function ContractConsole({
     if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight
   }, [messages, thinking])
 
-  useEffect(() => { inputRef.current?.focus() }, [])
 
   function handleFileSelect(file: File) {
     const mediaType = file.type || "text/plain"
