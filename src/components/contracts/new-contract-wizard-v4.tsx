@@ -2712,7 +2712,7 @@ function TimelineVisualization({
   )
 
   return (
-    <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
+    <div className="flex-1 bg-white flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center px-4 h-12 shrink-0">
         <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-[#f5f6f8] border border-[#ebeef1]">
