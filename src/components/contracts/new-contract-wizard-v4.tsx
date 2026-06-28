@@ -2714,7 +2714,7 @@ function TimelineVisualization({
   return (
     <div className="flex-1 bg-[#f5f6f8] flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center px-4 h-12 bg-white shrink-0">
+      <div className="flex items-center px-4 h-12 shrink-0">
         <div className="inline-flex items-center gap-0.5 p-0.5 rounded-md bg-[#f5f6f8] border border-[#ebeef1]">
           {timelineEnabled !== false && (
             <button
@@ -2760,7 +2760,7 @@ function TimelineVisualization({
       </div>
 
       {viewMode === "pdf" ? (
-        <div className="flex-1 min-h-0 overflow-auto bg-[#f5f6f8] p-4">
+        <div className="flex-1 min-h-0 overflow-auto p-4">
           <ServiceAgreementPdf
             contractId={contractId}
             customer={customer}
@@ -3924,7 +3924,7 @@ function InvoicePreviewPanel({
   const nextMonth = () => onChangeMonth(new Date(invoiceMonth.getFullYear(), invoiceMonth.getMonth() + 1, 1))
 
   return (
-    <div className="flex-1 min-h-0 overflow-auto bg-[#f5f6f8] p-6 flex justify-center">
+    <div className="flex-1 min-h-0 overflow-auto p-6 flex justify-center">
       <div className="w-full max-w-lg">
         {/* Month nav */}
         <div className="flex items-center justify-between mb-4">
